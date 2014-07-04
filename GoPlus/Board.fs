@@ -1,6 +1,5 @@
 ﻿module Board
 open Util
-open System.Collections.Generic
 
 type Color =
     | Black
@@ -29,7 +28,7 @@ let genCells board =
     let piecePop (inputBoard : Piece[,]) x y outputBoard =
         match inputBoard.[x,y] with
         | Normal col ->
-            Array2D.set outputBoard x y (Cell.Taken col)
+            Array2D.set outputBoard y x (Cell.Taken col)
         | Vertical (col, ext) ->
             for j in y - ext .. y + ext do (Cell.Taken col) |> Array2D.set outputBoard j x
         | Horizontal (col, ext) ->
@@ -46,15 +45,16 @@ let genCells board =
     output
 
 /// Adds pieces given to the board and returns the new board
-let addPieces board (pieces : (Piece * (int * int)) List) =
+let addPieces board (pieces : (Piece * (int * int)) list) =
     let output = Array2D.copy board
     for (piece, (x, y)) in pieces do
         Array2D.set output y x piece
+    output
 
-/// Takes a board of cells and returns a list of dead cells
-let checkDead board =
+/// Takes a board of cells and returns a list of dead cells, with the second argument being the color of the piece that was placed last, that does not get their liberties checked
+let checkDead board lastColor =
     /// Running total of dead cells
-    let dead = new List<Color * (int * int)>()
+    let dead = new System.Collections.Generic.List<Color * (int * int)>()
     let visited = Array2D.create (Array2D.length1 board) (Array2D.length2 board) false
     
     /// Gets adjacent unvisited neighboring pieces of the same color
@@ -70,20 +70,23 @@ let checkDead board =
 
     /// Returns a list of all pieces in a group
     let rec genGroup group =
+        for (x,y) in group do true |> Array2D.set visited y x
         let newNeighbors = [ for p in group do yield! findNeighbors p ]
         match newNeighbors with
         | [] -> group
         | _ -> group @ (genGroup newNeighbors)
     // Iterates through the board, finding out what pieces are dead and adding them to the list of dead pieces
-    for i in 0 .. Array2D.length2 board do
-        for j in 0 .. Array2D.length1 board do
+    for i in 0 .. Array2D.length2 board - 1 do
+        for j in 0 .. Array2D.length1 board - 1 do
             if not visited.[j,i] then
                 match board.[j,i] with
                 | Cell.Free -> ()
+                | Cell.Taken groupColor when groupColor = lastColor -> ()
                 | Cell.Taken groupColor ->
-                    let newDead = [ for p in genGroup [ (i,j) ] do yield! findEmpty p ]
-                    for p in newDead do dead.Add (groupColor, p)
-    
+                    let group = genGroup [ (i,j) ] 
+                    let liberties = [ for p in group do yield! findEmpty p ]
+                    if liberties = [] then
+                        for p in group do dead.Add (groupColor, p)
     [ for p in dead do yield p ]
 
 
@@ -92,3 +95,4 @@ let removePieces board pieces =
     let output = Array2D.copy board
     for (x, y) in pieces do
         Array2D.set output y x None
+    output
