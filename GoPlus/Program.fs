@@ -2,13 +2,14 @@
 open GameOptions
 open Game
 open System
+open Board
 
 let display board =
     let defaultColor = Console.ForegroundColor
     let size1 = Array2D.length1 board
     let size2 = Array2D.length2 board
-    for i in 0 .. size1 - 1 do
-        for j in 0 .. size2 - 1 do
+    for i = size2 - 1 downto 0 do
+        for j = 0 to size1 - 1 do
             match board.[i,j] with
             | Taken Black -> Console.ForegroundColor <- ConsoleColor.DarkGray
             | Taken White -> Console.ForegroundColor <- ConsoleColor.White
@@ -20,11 +21,18 @@ let display board =
 [<EntryPoint>]
 let POO argv = 
     let size = 9
-    let mutable testy = board size
-    testy <- addPieces testy [ (Normal White, (0, 0)); (Normal White, (1, 0)); (Normal Neutral, (0, 1)); (Normal White, (0, 4)); (Normal Black, (1, 1)); (Normal Black, (2, 0)); (Normal Black, (0, 2)); ]
-    let cells = genCells testy
-    display cells
+    let game = new Game (size, Regular, Vanilla)
+    game.AddPiece (Normal Black) Black (0, 1) |> printfn "%A"
+    game.Board |> genCells |> display
+    Console.ReadLine () |> ignore
     Console.ForegroundColor <- ConsoleColor.White
-    printf "%A" (checkDead cells Black)
+
+    game.AddPiece (Normal Black) Black (1, 0) |> printfn "%A"
+    game.Board |> genCells |> display
+    Console.ReadLine () |> ignore
+    Console.ForegroundColor <- ConsoleColor.White
+
+    game.AddPiece (Normal White) White (0, 0) |> printfn "%A"
+    game.Board |> genCells |> display
     Console.ReadLine () |> ignore
     0
