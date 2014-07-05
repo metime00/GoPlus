@@ -35,8 +35,7 @@ type Game (size, genop, powerop) =
             else Reject "Piece would be out of bounds"
         let existing = function
             | Accept ->
-                let test = (pieceCoords piece (x, y))
-                if List.filter (fun (x, y) -> cells.[y,x] <> Free) test = [] then Accept
+                if List.filter (fun (x, y) -> cells.[y,x] <> Free) (pieceCoords piece (x, y)) = [] then Accept
                 else Reject "Piece already exists there"
             | Reject message -> Reject message
         let optimal = function
