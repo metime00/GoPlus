@@ -22,7 +22,8 @@ let display board =
 let POO argv = 
     let size = 9
     let game = new Game (size, Regular, Vanilla)
-    game.AddPiece (Normal Black) Black (0, 1) |> printfn "%A"
+
+    game.AddPiece (Horizontal (Black, 1)) Black (1, 1) |> printfn "%A"
     game.Board |> genCells |> display
     Console.ReadLine () |> ignore
     Console.ForegroundColor <- ConsoleColor.White
@@ -32,7 +33,12 @@ let POO argv =
     Console.ReadLine () |> ignore
     Console.ForegroundColor <- ConsoleColor.White
 
-    game.AddPiece (Normal White) White (0, 0) |> printfn "%A"
+    game.AddPiece (Horizontal (White, 1)) White (1, 2) |> printfn "%A"
+    game.Board |> genCells |> display
+    Console.ReadLine () |> ignore
+    Console.ForegroundColor <- ConsoleColor.White
+
+    game.RemovePiece (1, 2) |> printfn "%A"
     game.Board |> genCells |> display
     Console.ReadLine () |> ignore
     0

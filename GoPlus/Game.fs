@@ -18,10 +18,12 @@ type Game (size, genop, powerop) =
     let mutable cells = genCells board
     let playerBlack = new Player (Black)
     let playerWhite = new Player (White)
-
+    /// The function to advance the board to the next state, should be the only way the board is changed
     let changeBoard newBoard =
         oldBoards.Add board
         board <- newBoard
+        cells <- genCells board
+
     /// Returns the game's board for displaying
     member this.Board = board
 
@@ -33,7 +35,8 @@ type Game (size, genop, powerop) =
             else Reject "Piece would be out of bounds"
         let existing = function
             | Accept ->
-                if List.filter (fun (x, y) -> cells.[y,x] <> Free) (pieceCoords piece (x, y)) = [] then Accept
+                let test = (pieceCoords piece (x, y))
+                if List.filter (fun (x, y) -> cells.[y,x] <> Free) test = [] then Accept
                 else Reject "Piece already exists there"
             | Reject message -> Reject message
         let optimal = function
@@ -73,7 +76,14 @@ type Game (size, genop, powerop) =
             | Reject message -> Reject message
         bounds |> existing |> optimal |> ko |> success //does a sequence of checks and returns whether or not a problem occured and where
 
+    /// Removes a piece if it exists at the given location
     member this.RemovePiece (x, y) =
-        // add check for if the coordinate selected has a piece that extends to it
-        changeBoard (removePieces board [ (x, y) ])
-        Accept
+        let mutable response = Reject "No piece at given location"
+        for i = 0 to size - 1 do
+            for j = 0 to size - 1 do
+                match pieceCoords board.[j,i] (i, j) |> List.tryFind (fun p -> p = (x, y)) with
+                    | Option.Some p ->
+                        changeBoard (removePieces board [ (i, j) ])
+                        response <- Accept
+                    | Option.None -> ()
+        response
