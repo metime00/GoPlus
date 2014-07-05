@@ -1,4 +1,6 @@
-﻿open Board
+﻿open Pieces
+open GameOptions
+open Game
 open System
 
 let display board =
@@ -16,7 +18,7 @@ let display board =
         printf "\n"
 
 [<EntryPoint>]
-let main argv = 
+let POO argv = 
     let size = 9
     let mutable testy = board size
     testy <- addPieces testy [ (Normal White, (0, 0)); (Normal White, (1, 0)); (Normal Neutral, (0, 1)); (Normal White, (0, 4)); (Normal Black, (1, 1)); (Normal Black, (2, 0)); (Normal Black, (0, 2)); ]

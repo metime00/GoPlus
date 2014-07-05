@@ -46,7 +46,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Util.fs" />
+    <Compile Include="Pieces.fs" />
+    <Compile Include="GameOptions.fs" />
     <Compile Include="Board.fs" />
+    <Compile Include="BoardGen.fs" />
+    <Compile Include="Player.fs" />
     <Compile Include="Game.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />

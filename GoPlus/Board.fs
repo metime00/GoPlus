@@ -1,22 +1,6 @@
 ﻿module Board
 open Util
-
-type Color =
-    | Black
-    | White
-    | Neutral
-
-type Cell =
-    | Taken of Color
-    | Free
-
-/// A piece in the game of GoPlus, where the int in some pieces is extension out from the center
-type Piece =
-    | Normal of Color
-    | Vertical of Color * int
-    | Horizontal of Color * int
-    | Big of Color * int
-    | None
+open Pieces
 
 /// Returns an empty board of pieces
 let board size = Array2D.create size size Piece.None
