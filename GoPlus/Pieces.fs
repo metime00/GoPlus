@@ -15,4 +15,5 @@ type Piece =
     | Vertical of Color * int
     | Horizontal of Color * int
     | Big of Color * int
+    | L of Color
     | None

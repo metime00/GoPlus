@@ -38,7 +38,17 @@ let POO argv =
     Console.ReadLine () |> ignore
     Console.ForegroundColor <- ConsoleColor.White
 
-    game.RemovePiece (1, 2) |> printfn "%A"
+    game.AddPiece (L White) White (4, 0) |> printfn "%A"
+    game.Board |> genCells |> display
+    Console.ReadLine () |> ignore
+    Console.ForegroundColor <- ConsoleColor.White
+
+    game.AddPiece (Normal White) White (3, 1) |> printfn "%A"
+    game.Board |> genCells |> display
+    Console.ReadLine () |> ignore
+    Console.ForegroundColor <- ConsoleColor.White
+
+    game.AddPiece (Normal White) White (0, 0) |> printfn "%A"
     game.Board |> genCells |> display
     Console.ReadLine () |> ignore
     0

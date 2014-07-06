@@ -40,13 +40,17 @@ type Game (size, genop, powerop) =
             | Reject message -> Reject message
         let optimal = function
             | Accept ->
-                let potential =
-                    addPieces board [ (piece, (x, y)) ]
+                let preCheck = addPieces board [ (piece, (x, y)) ] // board with potential piece added before captures
+                let postCheck = // board after the potential piece is placed
+                    preCheck
                     |> genCells
-                let lastColorDead = 
-                    potential
                     |> checkDead Neutral //color parameter is neutral because a neutral piece will never be placed
-                    |> List.filter (fun (x, y) -> potential.[y,x] = Cell.Taken color) //only cares about the color who just placed a piece having dead groups
+                    |> removePieces preCheck // if the placing of this piece would capture stones, the stones are captured here
+                    |> genCells
+                let lastColorDead =
+                    postCheck
+                    |> checkDead Neutral
+                    |> List.filter (fun (x, y) -> postCheck.[y,x] = Cell.Taken color) //only cares about the color who just placed a piece having dead groups
                 if lastColorDead = [] then Accept
                 else Reject "Placing a piece there would cause that piece to be dead"
             | Reject message -> Reject message
