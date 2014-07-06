@@ -44,8 +44,8 @@ type Game (size, genop, powerop) =
                 let postCheck = // board after the potential piece is placed
                     preCheck
                     |> genCells
-                    |> checkDead Neutral //color parameter is neutral because a neutral piece will never be placed
-                    |> removePieces preCheck // if the placing of this piece would capture stones, the stones are captured here
+                    |> checkDead Neutral // color parameter is neutral because a neutral piece will never be placed
+                    |> removePieces preCheck // if the placing of this piece would capture stones, the stones are captured here, so the piece placed isn't counted as dead if it captures a group
                     |> genCells
                 let lastColorDead =
                     postCheck
@@ -69,12 +69,18 @@ type Game (size, genop, powerop) =
         let success = function
             | Accept -> //only performs modifications if all checks succeeded
                 let temp = addPieces board [ (piece, (x, y)) ]
-                temp
-                |> genCells
-                |> checkDead color
+                let numDead =
+                    temp
+                    |> genCells
+                    |> checkDead color
+                numDead
                 |> List.filter (fun (x, y) -> board.[y,x] <> None)
                 |> removePieces temp
                 |> changeBoard
+                match color with // add the points to the player's score who captured pieces
+                | Black -> List.length numDead |> playerBlack.AddScore
+                | White -> List.length numDead |> playerWhite.AddScore
+                | Neutral -> ()
                 Accept
             | Reject message -> Reject message
         bounds |> existing |> optimal |> ko |> success //does a sequence of checks and returns whether or not a problem occured and where
@@ -90,3 +96,6 @@ type Game (size, genop, powerop) =
                         response <- Accept
                     | Option.None -> ()
         response
+    /// Ends the game and calculates total score
+    member this.CalulateScore () =
+        ()
