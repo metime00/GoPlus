@@ -19,6 +19,8 @@ let pieceCoords piece (x, y) =
                     for j = y - ext to y + ext do
                         yield (x, y)
             ]
+        | L col ->
+            [ (x, y); (x - 1, y); (x - 2, y); (x, y + 1) ]
         | None -> []
 
 /// Takes a board of pieces and returns the board with cells instead of pieces
@@ -34,6 +36,8 @@ let genCells board =
         | Horizontal (col, ext) ->
             for (i, _) in pieceCoords inputBoard.[y,x] (x, y) do (Cell.Taken col) |> Array2D.set outputBoard y i
         | Big (col, ext)->
+            for (i, j) in pieceCoords inputBoard.[y,x] (x, y) do (Cell.Taken col) |> Array2D.set outputBoard j i
+        | L col ->
             for (i, j) in pieceCoords inputBoard.[y,x] (x, y) do (Cell.Taken col) |> Array2D.set outputBoard j i
         | None -> ()
     //check every coordinate for a piece, even though some pieces populate multiple tiles
