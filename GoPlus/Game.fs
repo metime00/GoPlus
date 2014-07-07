@@ -13,7 +13,7 @@ type ActionResponse =
     | Reject of string
 
 type Game (size, genop, powerop) =
-    let oldBoards = new System.Collections.Generic.List<Piece[,]>()
+    let oldBoards = new System.Collections.Generic.List<Option<Piece>[,]>()
     let mutable board = generate genop size
     let mutable cells = genCells board
     let playerBlack = new Player (Black)
@@ -24,6 +24,17 @@ type Game (size, genop, powerop) =
         board <- newBoard
         cells <- genCells board
 
+    /// Returns the cells of a potential board after a piece is placed
+    let potentialBoard piece color (x, y) =
+        let preCheck = addPieces board [ (piece, (x, y)) ] // board with potential piece added before captures
+        let postCheck = // board after the potential piece is placed
+            preCheck
+            |> genCells
+            |> checkDead color // checks using the color placed so that if the piece placed is dead, it isn't taken out here before the next check for dead pieces of that color
+            |> removePieces preCheck // if the placing of this piece would capture stones, the stones are captured here, so the piece placed isn't counted as dead if it captures a group
+            |> genCells
+        postCheck
+
     /// Returns the game's board for displaying
     member this.Board = board
 
@@ -31,40 +42,38 @@ type Game (size, genop, powerop) =
     member this.AddPiece piece color (x, y) =
         // add bounds checking, existing piece checking, optimality checking, and ko rule
         let bounds =
-            if List.filter (fun i -> boundCheck i size size = false) (pieceCoords piece (x, y)) = [] then Accept
+            if List.filter (fun i -> boundCheck i size size = false) (pieceCoords (snd piece) (x, y)) = [] then Accept
             else Reject "Piece would be out of bounds"
         let existing = function
             | Accept ->
-                if List.filter (fun (x, y) -> cells.[y,x] <> Free) (pieceCoords piece (x, y)) = [] then Accept
+                if List.filter (fun (x, y) -> cells.[y,x] <> Free) (pieceCoords (snd piece) (x, y)) = [] then Accept
                 else Reject "Piece already exists there"
             | Reject message -> Reject message
         let optimal = function
             | Accept ->
-                let preCheck = addPieces board [ (piece, (x, y)) ] // board with potential piece added before captures
-                let postCheck = // board after the potential piece is placed
-                    preCheck
-                    |> genCells
-                    |> checkDead Neutral // color parameter is neutral because a neutral piece will never be placed
-                    |> removePieces preCheck // if the placing of this piece would capture stones, the stones are captured here, so the piece placed isn't counted as dead if it captures a group
-                    |> genCells
+                let potential = potentialBoard piece color (x, y)
                 let lastColorDead =
-                    postCheck
-                    |> checkDead Neutral
-                    |> List.filter (fun (x, y) -> postCheck.[y,x] = Cell.Taken color) //only cares about the color who just placed a piece having dead groups
+                    potential
+                    |> checkDead Neutral // color parameter is neutral because a neutral piece will never be placed
+                    |> List.filter (fun (x, y) -> potential.[y,x] = Cell.Taken color) //only cares about the color who just placed a piece having dead groups
                 if lastColorDead = [] then Accept
                 else Reject "Placing a piece there would cause that piece to be dead"
             | Reject message -> Reject message
         let ko = function
             | Accept ->
-                let newBoard = addPieces board [ (piece, (x, y)) ]
-                let diff =
-                    [
-                        for i = 0 to size - 1 do
-                            for j = 0 to size - 1 do
-                                if newBoard.[j,i] <> board.[j,i] then yield board.[j,i]
-                    ]
-                if diff <> [] then Accept
-                else Reject "Placing that piece would violate the ko rule"
+                match oldBoards.Count with
+                | 0 -> Accept
+                | _ ->
+                    let newBoard = potentialBoard piece color (x, y)
+                    let oldBoard = oldBoards.Item (oldBoards.Count - 1) |> genCells
+                    let diff =
+                        [
+                            for i = 0 to size - 1 do
+                                for j = 0 to size - 1 do
+                                    if newBoard.[j,i] <> oldBoard.[j,i] then yield oldBoard.[j,i]
+                        ]
+                    if diff <> [] then Accept
+                    else Reject "Placing that piece would violate the ko rule"
             | Reject message -> Reject message
         let success = function
             | Accept -> //only performs modifications if all checks succeeded
@@ -90,11 +99,14 @@ type Game (size, genop, powerop) =
         let mutable response = Reject "No piece at given location"
         for i = 0 to size - 1 do
             for j = 0 to size - 1 do
-                match pieceCoords board.[j,i] (i, j) |> List.tryFind (fun p -> p = (x, y)) with
+                match board.[j,i] with
+                | Some (_, shape) -> 
+                    match pieceCoords shape (i, j) |> List.tryFind (fun p -> p = (x, y)) with
                     | Option.Some p ->
                         changeBoard (removePieces board [ (i, j) ])
                         response <- Accept
                     | Option.None -> ()
+                | None -> ()
         response
     /// Ends the game and calculates total score
     member this.CalulateScore () =

@@ -3,42 +3,43 @@ open Util
 open Pieces
 
 /// Returns an empty board of pieces
-let board size = Array2D.create size size Piece.None
+let board size = Array2D.create size size (None : Option<Piece>)
 /// Returns the coordinates occupied by the given piece
-let pieceCoords piece (x, y) =
-    match piece with
-        | Normal col ->
-            [ (x, y) ]
-        | Vertical (col, ext) ->
-            [ for j = y - ext to y + ext do yield (x, j) ]
-        | Horizontal (col, ext) ->
-            [ for i = x - ext to x + ext do yield (i, y) ]
-        | Big (col, ext) ->
-            [
-                for i = x - ext to x + ext do
-                    for j = y - ext to y + ext do
-                        yield (x, y)
-            ]
-        | L col ->
-            [ (x, y); (x - 1, y); (x - 2, y); (x, y + 1) ]
-        | None -> []
+let pieceCoords shape (x, y) =
+    match shape with
+    | Normal ->
+        [ (x, y) ]
+    | Vertical ext ->
+        [ for j = y - ext to y + ext do yield (x, j) ]
+    | Horizontal ext ->
+        [ for i = x - ext to x + ext do yield (i, y) ]
+    | Big ext ->
+        [
+            for i = x - ext to x + ext do
+                for j = y - ext to y + ext do
+                    yield (x, y)
+        ]
+    | L ->
+        [ (x, y); (x - 1, y); (x - 2, y); (x, y + 1) ]
 
 /// Takes a board of pieces and returns the board with cells instead of pieces
 let genCells board =
     let output = Array2D.create (Array2D.length1 board) (Array2D.length2 board) Cell.Free
     /// Populates the output board's color using whatever piece is at the given coordinate
-    let piecePop (inputBoard : Piece[,]) x y outputBoard =
+    let piecePop (inputBoard : Option<Piece>[,]) x y outputBoard =
         match inputBoard.[y,x] with
-        | Normal col ->
-            Array2D.set outputBoard y x (Cell.Taken col)
-        | Vertical (col, ext) ->
-            for (_, j) in pieceCoords inputBoard.[y,x] (x, y) do (Cell.Taken col) |> Array2D.set outputBoard j x
-        | Horizontal (col, ext) ->
-            for (i, _) in pieceCoords inputBoard.[y,x] (x, y) do (Cell.Taken col) |> Array2D.set outputBoard y i
-        | Big (col, ext)->
-            for (i, j) in pieceCoords inputBoard.[y,x] (x, y) do (Cell.Taken col) |> Array2D.set outputBoard j i
-        | L col ->
-            for (i, j) in pieceCoords inputBoard.[y,x] (x, y) do (Cell.Taken col) |> Array2D.set outputBoard j i
+        | Some (col, shape) ->
+            match shape with
+            | Normal ->
+                Array2D.set outputBoard y x (Cell.Taken col)
+            | Vertical ext ->
+                for (_, j) in pieceCoords shape (x, y) do (Cell.Taken col) |> Array2D.set outputBoard j x
+            | Horizontal ext ->
+                for (i, _) in pieceCoords shape (x, y) do (Cell.Taken col) |> Array2D.set outputBoard y i
+            | Big ext ->
+                for (i, j) in pieceCoords shape (x, y) do (Cell.Taken col) |> Array2D.set outputBoard j i
+            | L ->
+                for (i, j) in pieceCoords shape (x, y) do (Cell.Taken col) |> Array2D.set outputBoard j i
         | None -> ()
     //check every coordinate for a piece, even though some pieces populate multiple tiles
     for i = 0 to Array2D.length2 board - 1 do
@@ -47,10 +48,9 @@ let genCells board =
     output
 
 /// Adds pieces given to the board and returns the new board
-let addPieces board (pieces : (Piece * (int * int)) list) =
+let addPieces (board : Option<Piece>[,]) pieces =
     let output = Array2D.copy board
-    for (piece, (x, y)) in pieces do
-        Array2D.set output y x piece
+    List.iter (fun (piece, (x, y)) -> Array2D.set output y x (Some piece)) pieces
     output
 
 /// Takes a board of cells and returns a list of dead cells, with the second argument being the color of the piece that was placed last, that does not get their liberties checked
@@ -94,8 +94,7 @@ let checkDead lastColor board =
 
 
 /// Removes pieces given from the given board and returns the new board with given pieces removed
-let removePieces board (pieces : (int * int) list) =
+let removePieces (board : Option<Piece>[,]) pieces =
     let output = Array2D.copy board
-    for (x, y) in pieces do
-        Array2D.set output y x None
+    List.iter (fun (x, y) -> Array2D.set output y x None) pieces
     output

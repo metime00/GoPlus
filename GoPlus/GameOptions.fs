@@ -1,10 +1,10 @@
 ﻿module GameOptions
 /// What extra features are generated at board creation
 type GenOption =
-    | Regular
-    | NeutralGen
-    | Powerup
-    | NeutralAndPowerup
+    {
+        NeutralGen: bool
+        PowerupGen: bool
+    }
 /// Level of powerups randomly generated during play
 type PowerOption =
     | Vanilla
