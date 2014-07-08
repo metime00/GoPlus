@@ -23,18 +23,23 @@ let pieceCoords shape (x, y) =
         [ (x, y); (x - 1, y); (x - 2, y); (x, y + 1) ]
 
 /// Returns a list of all pieces in the group at the given coordinates
-let rec genGroup group (visited : bool[,]) (board : Cell[,]) =
+let genGroup group (board : Cell[,]) =
     let size = Array2D.length1 board
-    /// Gets adjacent unvisited neighboring pieces of the same color
+    let visited = noVisits size
+    /// Gets adjacent unvisited neighboring pieces of the same color, and marks them all as visited
     let findNeighbors (x, y) = 
-        [(x - 1, y); (x + 1, y); (x, y - 1); (x, y + 1)] 
-        |> List.filter (fun (x, y) -> boundCheck (x, y) (size) (size))
-        |> List.filter (fun (x2, y2) -> not visited.[y2,x2] && board.[y2,x2] = board.[y,x])
-    for (x,y) in group do true |> Array2D.set visited y x
-    let newNeighbors = [ for p in group do yield! findNeighbors p ]
-    match newNeighbors with
-    | [] -> group
-    | _ -> group @ (genGroup newNeighbors visited board)
+        let output =
+            [(x - 1, y); (x + 1, y); (x, y - 1); (x, y + 1)] 
+            |> List.filter (fun (x, y) -> boundCheck (x, y) (size) (size))
+            |> List.filter (fun (x2, y2) -> visited.[y2,x2] = false && board.[y2,x2] = board.[y,x])
+        List.iter (fun (x, y) -> true |> Array2D.set visited y x) output
+        output
+    let rec loop group board =
+        let newNeighbors = [ for p in group do yield! findNeighbors p ]
+        match newNeighbors with
+        | [] -> group
+        | _ -> group @ (loop newNeighbors board)
+    loop group board
 
 /// Takes a board of pieces and returns the board with cells instead of pieces
 let genCells board =
@@ -86,7 +91,7 @@ let checkDead lastColor board =
                 | Cell.Free -> ()
                 | Cell.Taken groupColor when groupColor = lastColor -> ()
                 | Cell.Taken groupColor ->
-                    let group = genGroup [ (i,j) ] visited board
+                    let group = genGroup [ (i,j) ] board
                     let liberties = [ for p in group do yield! findEmpty p ]
                     if liberties = [] then
                         for p in group do dead.Add p

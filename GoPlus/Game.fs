@@ -113,17 +113,17 @@ type Game (size, genop, powerop) =
         let initial = (cells).[y,x]
         match initial with
         | Taken White -> 
-            let dead = genGroup [ (x,y) ] (noVisits size) cells
+            let dead = genGroup [ (x,y) ] cells
             playerBlack.AddScore (List.length dead)
             changeBoard (removePieces board dead)
             Accept
         | Taken Black ->
-            let dead = genGroup [ (x,y) ] (noVisits size) cells
+            let dead = genGroup [ (x,y) ] cells
             playerWhite.AddScore (List.length dead)
             changeBoard (removePieces board dead)
             Accept
         | Taken Neutral ->
-            let dead = genGroup [ (x,y) ] (noVisits size) cells
+            let dead = genGroup [ (x,y) ] cells
             changeBoard (removePieces board dead)
             Accept
         | Free -> Reject "No group here to remove"

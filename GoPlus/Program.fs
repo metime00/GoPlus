@@ -102,4 +102,5 @@ let POO argv =
     game.Board |> genCells |> display
     Console.ReadLine () |> ignore
     Console.ForegroundColor <- ConsoleColor.White
+
     0
