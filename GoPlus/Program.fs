@@ -98,7 +98,7 @@ let POO argv =
     Console.ReadLine () |> ignore
     Console.ForegroundColor <- ConsoleColor.White
 
-    game.AddPiece (Black, Normal) Black (5, 6) |> printfn "%A"
+    game.MarkDead (0, 0) |> printfn "%A"
     game.Board |> genCells |> display
     Console.ReadLine () |> ignore
     Console.ForegroundColor <- ConsoleColor.White

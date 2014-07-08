@@ -22,6 +22,20 @@ let pieceCoords shape (x, y) =
     | L ->
         [ (x, y); (x - 1, y); (x - 2, y); (x, y + 1) ]
 
+/// Returns a list of all pieces in the group at the given coordinates
+let rec genGroup group (visited : bool[,]) (board : Cell[,]) =
+    let size = Array2D.length1 board
+    /// Gets adjacent unvisited neighboring pieces of the same color
+    let findNeighbors (x, y) = 
+        [(x - 1, y); (x + 1, y); (x, y - 1); (x, y + 1)] 
+        |> List.filter (fun (x, y) -> boundCheck (x, y) (size) (size))
+        |> List.filter (fun (x2, y2) -> not visited.[y2,x2] && board.[y2,x2] = board.[y,x])
+    for (x,y) in group do true |> Array2D.set visited y x
+    let newNeighbors = [ for p in group do yield! findNeighbors p ]
+    match newNeighbors with
+    | [] -> group
+    | _ -> group @ (genGroup newNeighbors visited board)
+
 /// Takes a board of pieces and returns the board with cells instead of pieces
 let genCells board =
     let output = Array2D.create (Array2D.length1 board) (Array2D.length2 board) Cell.Free
@@ -58,26 +72,12 @@ let checkDead lastColor board =
     /// Running total of dead cells
     let dead = new System.Collections.Generic.List<(int * int)>()
     let size = Array2D.length1 board
-    let visited = Array2D.create (size) (size) false
-    
-    /// Gets adjacent unvisited neighboring pieces of the same color
-    let findNeighbors (x, y) = 
-        [(x - 1, y); (x + 1, y); (x, y - 1); (x, y + 1)] 
-        |> List.filter (fun (x, y) -> boundCheck (x, y) (size) (size))
-        |> List.filter (fun (x2, y2) -> not visited.[y2,x2] && board.[y2,x2] = board.[y,x])
+    let visited = (noVisits size)
     /// Gets adjacent empty spaces
     let findEmpty (x, y) =
         [(x - 1, y); (x + 1, y); (x, y - 1); (x, y + 1)] 
         |> List.filter (fun (x, y) -> boundCheck (x, y) (size) (size))
         |> List.filter (fun (x, y) -> board.[y,x] = Cell.Free)
-
-    /// Returns a list of all pieces in a group
-    let rec genGroup group =
-        for (x,y) in group do true |> Array2D.set visited y x
-        let newNeighbors = [ for p in group do yield! findNeighbors p ]
-        match newNeighbors with
-        | [] -> group
-        | _ -> group @ (genGroup newNeighbors)
     // Iterates through the board, finding out what pieces are dead and adding them to the list of dead pieces
     for i = 0 to size - 1 do
         for j = 0 to size - 1 do
@@ -86,7 +86,7 @@ let checkDead lastColor board =
                 | Cell.Free -> ()
                 | Cell.Taken groupColor when groupColor = lastColor -> ()
                 | Cell.Taken groupColor ->
-                    let group = genGroup [ (i,j) ] 
+                    let group = genGroup [ (i,j) ] visited board
                     let liberties = [ for p in group do yield! findEmpty p ]
                     if liberties = [] then
                         for p in group do dead.Add p

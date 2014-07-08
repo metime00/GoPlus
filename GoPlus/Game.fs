@@ -108,6 +108,25 @@ type Game (size, genop, powerop) =
                     | Option.None -> ()
                 | None -> ()
         response
+    /// Marks the group at the current location dead, gives all its pieces to the player whose color was not marked, and removes the pices from the board
+    member this.MarkDead (x, y) =
+        let initial = (cells).[y,x]
+        match initial with
+        | Taken White -> 
+            let dead = genGroup [ (x,y) ] (noVisits size) cells
+            playerBlack.AddScore (List.length dead)
+            changeBoard (removePieces board dead)
+            Accept
+        | Taken Black ->
+            let dead = genGroup [ (x,y) ] (noVisits size) cells
+            playerWhite.AddScore (List.length dead)
+            changeBoard (removePieces board dead)
+            Accept
+        | Taken Neutral ->
+            let dead = genGroup [ (x,y) ] (noVisits size) cells
+            changeBoard (removePieces board dead)
+            Accept
+        | Free -> Reject "No group here to remove"
     /// Ends the game and calculates total score
     member this.CalulateScore () =
         ()
