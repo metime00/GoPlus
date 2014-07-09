@@ -113,20 +113,49 @@ type Game (size, genop, powerop) =
         let initial = (cells).[y,x]
         match initial with
         | Taken White -> 
-            let dead = genGroup [ (x,y) ] cells
+            let dead = genGroup (x,y) cells
             playerBlack.AddScore (List.length dead)
             changeBoard (removePieces board dead)
             Accept
         | Taken Black ->
-            let dead = genGroup [ (x,y) ] cells
+            let dead = genGroup (x,y) cells
             playerWhite.AddScore (List.length dead)
             changeBoard (removePieces board dead)
             Accept
         | Taken Neutral ->
-            let dead = genGroup [ (x,y) ] cells
+            let dead = genGroup (x,y) cells
             changeBoard (removePieces board dead)
             Accept
         | Free -> Reject "No group here to remove"
-    /// Ends the game and calculates total score
+    /// Ends the game and calculates total score, assumes all groups are alive
     member this.CalulateScore () =
-        ()
+        let visited = (noVisits size)
+        /// Returns the nonempty pieces adjacent
+        let findEnclosing (x, y) = 
+            let output =
+                [(x - 1, y); (x + 1, y); (x, y - 1); (x, y + 1)] 
+                |> List.filter (fun (x, y) -> boundCheck (x, y) (size) (size))
+                |> List.filter (fun (x, y) -> visited.[y,x] = false && cells.[y,x] <> Free)
+            List.iter (fun (x, y) -> true |> Array2D.set visited y x) output
+            output
+        for i = 0 to size - 1 do
+            for j = 0 to size - 1 do
+                if not visited.[j,i] && cells.[j,i] = Free then 
+                    let group = genGroup (i, j) cells
+                    List.iter (fun (x, y) -> true |> Array2D.set visited y x) group
+                    let enclosingPieces = [ for p in group do yield! findEnclosing p ]
+                    let rec enclosingColor pieces comparePiece =
+                        match pieces with
+                        | [] -> Some comparePiece
+                        | (x, y) :: _ ->
+                            if comparePiece = cells.[y,x] then enclosingColor (List.tail pieces) comparePiece
+                            else None
+                    match enclosingColor enclosingPieces cells.[snd enclosingPieces.[0], fst enclosingPieces.[0]] with
+                    | Some (Taken Black) ->
+                        playerBlack.AddScore (List.length group)
+                        group |> printfn "%A"
+                    | Some (Taken White) ->
+                        playerWhite.AddScore (List.length group)
+                        group |> printfn "%A"
+                    | Some (Taken Neutral) -> ()
+                    | None -> ()

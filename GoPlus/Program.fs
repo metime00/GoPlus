@@ -103,4 +103,9 @@ let POO argv =
     Console.ReadLine () |> ignore
     Console.ForegroundColor <- ConsoleColor.White
 
+    game.CalulateScore ()
+    game.Board |> genCells |> display
+    Console.ReadLine () |> ignore
+    Console.ForegroundColor <- ConsoleColor.White
+
     0

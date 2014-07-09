@@ -23,9 +23,12 @@ let pieceCoords shape (x, y) =
         [ (x, y); (x - 1, y); (x - 2, y); (x, y + 1) ]
 
 /// Returns a list of all pieces in the group at the given coordinates
-let genGroup group (board : Cell[,]) =
+let genGroup (x, y) (board : Cell[,]) =
     let size = Array2D.length1 board
+    
     let visited = noVisits size
+    true |> Array2D.set visited y x // have to set initial location to visited, because it won't in the other functions
+
     /// Gets adjacent unvisited neighboring pieces of the same color, and marks them all as visited
     let findNeighbors (x, y) = 
         let output =
@@ -38,8 +41,8 @@ let genGroup group (board : Cell[,]) =
         let newNeighbors = [ for p in group do yield! findNeighbors p ]
         match newNeighbors with
         | [] -> group
-        | _ -> group @ (loop newNeighbors board)
-    loop group board
+        | _ -> (loop newNeighbors board) @ group
+    loop [ (x, y) ] board
 
 /// Takes a board of pieces and returns the board with cells instead of pieces
 let genCells board =
@@ -91,10 +94,12 @@ let checkDead lastColor board =
                 | Cell.Free -> ()
                 | Cell.Taken groupColor when groupColor = lastColor -> ()
                 | Cell.Taken groupColor ->
-                    let group = genGroup [ (i,j) ] board
+                    let group = genGroup (i,j) board
                     let liberties = [ for p in group do yield! findEmpty p ]
                     if liberties = [] then
-                        for p in group do dead.Add p
+                        for (x, y) in group do
+                            dead.Add (x, y)
+                            true |> Array2D.set visited y x
     [ for p in dead do yield p ]
 
 
