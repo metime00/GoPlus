@@ -3,6 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "GoPlus", "GoPlus\GoPlus.fsproj", "{35A8F855-A9A8-46BD-A851-6C8DE47F0A25}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "GoPlusTests", "GoPlusTests\GoPlusTests.fsproj", "{70C343DC-F8CB-407A-8917-8D4FBE4EF6EA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{445178FB-5973-4044-8BB3-8A8E606795E9}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\packages.config = .nuget\packages.config
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -13,6 +20,10 @@ Global
 		{35A8F855-A9A8-46BD-A851-6C8DE47F0A25}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{35A8F855-A9A8-46BD-A851-6C8DE47F0A25}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{35A8F855-A9A8-46BD-A851-6C8DE47F0A25}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70C343DC-F8CB-407A-8917-8D4FBE4EF6EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70C343DC-F8CB-407A-8917-8D4FBE4EF6EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70C343DC-F8CB-407A-8917-8D4FBE4EF6EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70C343DC-F8CB-407A-8917-8D4FBE4EF6EA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

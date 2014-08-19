@@ -108,6 +108,7 @@ type Game (size, genop, powerop) =
                     | Option.None -> ()
                 | None -> ()
         response
+
     /// Marks the group at the current location dead, gives all its pieces to the player whose color was not marked, and removes the pices from the board
     member this.MarkDead (x, y) =
         let initial = (cells).[y,x]
