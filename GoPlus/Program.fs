@@ -2,14 +2,16 @@
 open GameOptions
 open Game
 open System
+open System.Windows.Forms
 open Board
+open Window
 
 let display board =
     let defaultColor = Console.ForegroundColor
     let size1 = Array2D.length1 board
     let size2 = Array2D.length2 board
-    for i = size2 - 1 downto 0 do
-        for j = 0 to size1 - 1 do
+    for j = size2 - 1 downto 0 do
+        for i = 0 to size1 - 1 do
             match board.[i,j] with
             | Taken Black -> Console.ForegroundColor <- ConsoleColor.DarkGray
             | Taken White -> Console.ForegroundColor <- ConsoleColor.White
@@ -18,7 +20,6 @@ let display board =
             printf "O"
         printf "\n"
 
-[<EntryPoint>]
 let POO argv = 
     let size = 9
     let game = new Game (size, { NeutralGen = false; PowerupGen = false }, Vanilla)
@@ -109,3 +110,12 @@ let POO argv =
     Console.ForegroundColor <- ConsoleColor.White
 
     0
+[<EntryPoint>]
+let windowStart argv =
+//    let steve = new Window ()
+//    steve.Show ()
+//    while steve.Visible do
+//        steve.Refresh ()
+//        Application.DoEvents ()
+//    0
+    POO ()

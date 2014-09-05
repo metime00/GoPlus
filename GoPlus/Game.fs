@@ -38,7 +38,7 @@ type Game (size, genop, powerop) =
     /// Returns the game's board for displaying
     member this.Board = board
 
-    /// Adds a piece to this location if it's valid, then checks for dead pieces using the given color, returning an ActionResponse to signal success or failure
+    /// Adds a piece to this location if it's valid, then checks for dead pieces using the given color (for a situation where white is adding a black piece), returning an ActionResponse to signal success or failure
     member this.AddPiece piece color (x, y) =
         // add bounds checking, existing piece checking, optimality checking, and ko rule
         let bounds =
@@ -46,7 +46,7 @@ type Game (size, genop, powerop) =
             else Reject "Piece would be out of bounds"
         let existing = function
             | Accept ->
-                if List.filter (fun (x, y) -> cells.[y,x] <> Free) (pieceCoords (snd piece) (x, y)) = [] then Accept
+                if List.filter (fun (x, y) -> cells.[x,y] <> Free) (pieceCoords (snd piece) (x, y)) = [] then Accept
                 else Reject "Piece already exists there"
             | Reject message -> Reject message
         let optimal = function
@@ -55,7 +55,7 @@ type Game (size, genop, powerop) =
                 let lastColorDead =
                     potential
                     |> checkDead Neutral // color parameter is neutral because a neutral piece will never be placed
-                    |> List.filter (fun (x, y) -> potential.[y,x] = Cell.Taken color) //only cares about the color who just placed a piece having dead groups
+                    |> List.filter (fun (x, y) -> potential.[x,y] = Cell.Taken color) //only cares about the color who just placed a piece having dead groups
                 if lastColorDead = [] then Accept
                 else Reject "Placing a piece there would cause that piece to be dead"
             | Reject message -> Reject message
@@ -70,7 +70,7 @@ type Game (size, genop, powerop) =
                         [
                             for i = 0 to size - 1 do
                                 for j = 0 to size - 1 do
-                                    if newBoard.[j,i] <> oldBoard.[j,i] then yield oldBoard.[j,i]
+                                    if newBoard.[i,j] <> oldBoard.[i,j] then yield oldBoard.[i,j]
                         ]
                     if diff <> [] then Accept
                     else Reject "Placing that piece would violate the ko rule"
@@ -83,7 +83,7 @@ type Game (size, genop, powerop) =
                     |> genCells
                     |> checkDead color
                 numDead
-                |> List.filter (fun (x, y) -> board.[y,x] <> None)
+                |> List.filter (fun (x, y) -> board.[x,y] <> None)
                 |> removePieces temp
                 |> changeBoard
                 match color with // add the points to the player's score who captured pieces
@@ -99,7 +99,7 @@ type Game (size, genop, powerop) =
         let mutable response = Reject "No piece at given location"
         for i = 0 to size - 1 do
             for j = 0 to size - 1 do
-                match board.[j,i] with
+                match board.[i,j] with
                 | Some (_, shape) -> 
                     match pieceCoords shape (i, j) |> List.tryFind (fun p -> p = (x, y)) with
                     | Option.Some p ->
@@ -111,7 +111,7 @@ type Game (size, genop, powerop) =
 
     /// Marks the group at the current location dead, gives all its pieces to the player whose color was not marked, and removes the pices from the board
     member this.MarkDead (x, y) =
-        let initial = (cells).[y,x]
+        let initial = (cells).[x,y]
         match initial with
         | Taken White -> 
             let dead = genGroup (x,y) cells
@@ -128,7 +128,7 @@ type Game (size, genop, powerop) =
             changeBoard (removePieces board dead)
             Accept
         | Free -> Reject "No group here to remove"
-    /// Ends the game and calculates total score, assumes all groups are alive
+    /// Ends the game and calculates total score, assumes all groups are alive, adds to score by enclosed empty squares
     member this.CalulateScore () =
         let visited = (noVisits size)
         /// Returns the nonempty pieces adjacent
@@ -136,27 +136,28 @@ type Game (size, genop, powerop) =
             let output =
                 [(x - 1, y); (x + 1, y); (x, y - 1); (x, y + 1)] 
                 |> List.filter (fun (x, y) -> boundCheck (x, y) (size) (size))
-                |> List.filter (fun (x, y) -> visited.[y,x] = false && cells.[y,x] <> Free)
-            List.iter (fun (x, y) -> true |> Array2D.set visited y x) output
+                |> List.filter (fun (x, y) -> cells.[x,y] <> Free)
+//            List.iter (fun (x, y) -> true |> Array2D.set visited x y) output
             output
         for i = 0 to size - 1 do
             for j = 0 to size - 1 do
-                if not visited.[j,i] && cells.[j,i] = Free then 
+                if not visited.[i,j] && cells.[i,j] = Free then 
                     let group = genGroup (i, j) cells
-                    List.iter (fun (x, y) -> true |> Array2D.set visited y x) group
+                    List.iter (fun (x, y) -> true |> Array2D.set visited x y) group
                     let enclosingPieces = [ for p in group do yield! findEnclosing p ]
                     let rec enclosingColor pieces comparePiece =
                         match pieces with
                         | [] -> Some comparePiece
                         | (x, y) :: _ ->
-                            if comparePiece = cells.[y,x] then enclosingColor (List.tail pieces) comparePiece
+                            if comparePiece = cells.[x,y] then enclosingColor (List.tail pieces) comparePiece
                             else None
-                    match enclosingColor enclosingPieces cells.[snd enclosingPieces.[0], fst enclosingPieces.[0]] with
+                    match enclosingColor enclosingPieces cells.[fst enclosingPieces.[0], snd enclosingPieces.[0]] with
                     | Some (Taken Black) ->
                         playerBlack.AddScore (List.length group)
-                        group |> printfn "%A"
                     | Some (Taken White) ->
                         playerWhite.AddScore (List.length group)
-                        group |> printfn "%A"
                     | Some (Taken Neutral) -> ()
                     | None -> ()
+
+    member this.BlackScore = playerBlack.Score
+    member this.WhiteScore = playerWhite.Score
