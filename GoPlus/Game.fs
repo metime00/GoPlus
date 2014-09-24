@@ -137,7 +137,6 @@ type Game (size, genop, powerop) =
                 [(x - 1, y); (x + 1, y); (x, y - 1); (x, y + 1)] 
                 |> List.filter (fun (x, y) -> boundCheck (x, y) (size) (size))
                 |> List.filter (fun (x, y) -> cells.[x,y] <> Free)
-//            List.iter (fun (x, y) -> true |> Array2D.set visited x y) output
             output
         for i = 0 to size - 1 do
             for j = 0 to size - 1 do

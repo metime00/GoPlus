@@ -112,10 +112,10 @@ let POO argv =
     0
 [<EntryPoint>]
 let windowStart argv =
-//    let steve = new Window ()
-//    steve.Show ()
-//    while steve.Visible do
-//        steve.Refresh ()
-//        Application.DoEvents ()
-//    0
-    POO ()
+    let steve = new Window ()
+    steve.Show ()
+    while steve.Visible do
+        steve.Refresh ()
+        Application.DoEvents ()
+    0
+    //POO ()
