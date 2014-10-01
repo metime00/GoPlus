@@ -19,9 +19,17 @@ type Window () as this =
 
     let mutable turn = Pieces.Color.Black
 
-    let game = new Game (3, { NeutralGen = false; PowerupGen = false }, Vanilla)
+    let game = new Game (9, { NeutralGen = false; PowerupGen = false }, Vanilla)
 
     let squareSize = 400 / (Array2D.length1 game.Board)
+
+    let scoreDisplay = new Label ()
+    let endGameButton = new Button ()
+
+    let endGame args =
+        game.CalulateScore ()
+        MessageBox.Show(String.Format("black score: {0}, white score: {1}", game.GetScore Pieces.Color.Black, game.GetScore Pieces.Color.White)) |> ignore
+        ()
 
     do
         this.Text <- "GoPlus"
@@ -32,6 +40,16 @@ type Window () as this =
         this.FormBorderStyle <- FormBorderStyle.Fixed3D
         this.MaximizeBox <- false
         this.BackColor <- Color.White
+        scoreDisplay.Text <- (game.GetScore turn).ToString ()
+        scoreDisplay.Dock <- DockStyle.Right
+        scoreDisplay.AutoSize <- true
+        endGameButton.Text <- "calculate final scores"
+        endGameButton.Dock <- DockStyle.Bottom
+        endGameButton.AutoSize <- true
+        endGameButton.Click.Add endGame
+        this.Controls.Add scoreDisplay
+        this.Controls.Add endGameButton
+
     // Window will handle timer and whose turn it is, it will translate ui actions into function calls on Game.
     // It decides when things happen, Game implements them
     override this.OnMouseMove args =
@@ -42,17 +60,19 @@ type Window () as this =
             | Pieces.Color.Black ->
                 let x = args.X / squareSize
                 let y = args.Y / squareSize
-                game.AddPiece (Pieces.Color.Black, Shape.Normal) Pieces.Color.Black (x, y) |> ignore
-                turn <- Pieces.Color.White
+                let result = game.AddPiece (Pieces.Color.Black, Shape.Normal) Pieces.Color.Black (x, y)
+                if result = ActionResponse.Accept then turn <- Pieces.Color.White
             | Pieces.Color.White ->
                 let x = args.X / squareSize
                 let y = args.Y / squareSize
-                game.AddPiece (Pieces.Color.White, Shape.Normal) Pieces.Color.White (x, y) |> ignore
-                turn <- Pieces.Color.Black
+                let result = game.AddPiece (Pieces.Color.White, Shape.Normal) Pieces.Color.White (x, y)
+                if result = ActionResponse.Accept then turn <- Pieces.Color.Black
             this.Invalidate ();
             
 
     override this.OnPaint args =
+        scoreDisplay.Text <- String.Format("current player's score: {0}", game.GetScore turn)
+
         let size1 = Array2D.length1 game.Board
         let size2 = Array2D.length2 game.Board
         for i = 0 to size1 - 1 do

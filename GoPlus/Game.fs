@@ -158,5 +158,7 @@ type Game (size, genop, powerop) =
                     | Some (Taken Neutral) -> ()
                     | None -> ()
 
-    member this.BlackScore = playerBlack.Score
-    member this.WhiteScore = playerWhite.Score
+    member this.GetScore color =
+        match color with
+        | Pieces.Color.Black -> playerBlack.Score
+        | Pieces.Color.White -> playerWhite.Score
