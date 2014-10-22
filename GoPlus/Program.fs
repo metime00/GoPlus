@@ -112,7 +112,7 @@ let POO argv =
     0
 [<EntryPoint>]
 let windowStart argv =
-    let steve = new Window ()
+    let steve = new Window (19, 640, 480)
     steve.Show ()
     while steve.Visible do
         steve.Refresh ()
