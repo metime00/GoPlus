@@ -27,6 +27,7 @@ type Window (gameSize, width, height) as this =
     let squareSize = (scale width) / (gameSize)
 
     let scoreDisplay = new Label ()
+    let turnDisplay = new Label ()
     let endGameButton = new Button ()
 
     let endGame args =
@@ -46,12 +47,14 @@ type Window (gameSize, width, height) as this =
         scoreDisplay.Text <- (game.GetScore turn).ToString ()
         scoreDisplay.Dock <- DockStyle.Right
         scoreDisplay.AutoSize <- true
+        turnDisplay.Text <- "Black" //black begins game
+        turnDisplay.Size <- new Size(120, 50) //bad hardcoding make it better eventually
+        turnDisplay.Location <- new Point(this.ClientSize.Width - turnDisplay.Size.Width, scoreDisplay.Size.Height)
         endGameButton.Text <- "calculate final scores"
         endGameButton.Dock <- DockStyle.Bottom
         endGameButton.AutoSize <- true
         endGameButton.Click.Add endGame
-        this.Controls.Add scoreDisplay
-        this.Controls.Add endGameButton
+        this.Controls.AddRange [| scoreDisplay; turnDisplay; endGameButton |]
 
     // Window will handle timer and whose turn it is, it will translate ui actions into function calls on Game.
     // It decides when things happen, Game implements them
@@ -65,15 +68,19 @@ type Window (gameSize, width, height) as this =
                 let y = args.Y / squareSize
                 let result = game.AddPiece (Pieces.Color.Black, Shape.Normal) Pieces.Color.Black (x, y)
                 match result with
-                | ActionResponse.Accept -> turn <- Pieces.Color.White
-                | ActionResponse.Reject message -> MessageBox.Show(message, "U DUN FUCKED UP") |> ignore
+                | ActionResponse.Accept ->
+                    turnDisplay.Text <- "White"
+                    turn <- Pieces.Color.White
+                | ActionResponse.Reject message -> turnDisplay.Text <- message
             | Pieces.Color.White ->
                 let x = args.X / squareSize
                 let y = args.Y / squareSize
                 let result = game.AddPiece (Pieces.Color.White, Shape.Normal) Pieces.Color.White (x, y)
                 match result with
-                | ActionResponse.Accept -> turn <- Pieces.Color.Black
-                | ActionResponse.Reject message -> MessageBox.Show(message, "U DUN FUCKED UP") |> ignore
+                | ActionResponse.Accept ->
+                    turnDisplay.Text <- "Black"
+                    turn <- Pieces.Color.Black
+                | ActionResponse.Reject message -> turnDisplay.Text <- message
             this.Invalidate ();
             
 
