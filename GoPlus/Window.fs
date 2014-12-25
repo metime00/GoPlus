@@ -13,9 +13,9 @@ let scale coord = (int) ((float coord) * 2.0 / 3.0)
 
 let brushFromColor color =
     match color with
-    |  Pieces.Color.Neutral -> new SolidBrush(Color.Gray)
-    |  Pieces.Color.Black -> new SolidBrush(Color.Black)
-    |  Pieces.Color.White -> new SolidBrush(Color.White)
+    |  Pieces.Color.Neutral -> Brushes.Gray
+    |  Pieces.Color.Black -> Brushes.Black
+    |  Pieces.Color.White -> Brushes.White
 
 type Window (gameSize, width, height) as this =
     inherit Form ()
@@ -90,9 +90,9 @@ type Window (gameSize, width, height) as this =
         let size1 = Array2D.length1 game.Board
         let size2 = Array2D.length2 game.Board
         for i = 0 to size1 - 1 do
-            args.Graphics.DrawLine(new Pen(Color.Black), 0, i * squareSize + (squareSize / 2), scale this.ClientSize.Width, i * squareSize + (squareSize / 2))
+            args.Graphics.DrawLine(Pens.Black, 0, i * squareSize + (squareSize / 2), scale this.ClientSize.Width, i * squareSize + (squareSize / 2))
         for j = 0 to size2 - 1 do
-            args.Graphics.DrawLine(new Pen(Color.Black), j * squareSize + (squareSize / 2), 0, j * squareSize + (squareSize / 2), scale this.ClientSize.Width)
+            args.Graphics.DrawLine(Pens.Black, j * squareSize + (squareSize / 2), 0, j * squareSize + (squareSize / 2), scale this.ClientSize.Width)
         for i = 0 to size1 - 1 do
             for j = 0 to size2 - 1 do
                 match game.Board.[i,j] with
