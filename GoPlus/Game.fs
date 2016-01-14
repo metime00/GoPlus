@@ -1,4 +1,12 @@
 ﻿module Game
+// TODO
+// 1. before networking, change the interaction with the game object so there is a state type and a move type so that you have:
+// initial :: State
+// apply :: Move -> State -> State
+// valid :: Move -> State -> ActionResponse (or something similar)
+// so that it's easy to send a move and easy to go from a list of moves and an initial state to any state
+// State would store things like next player to move, board state, player data, game seed
+
 // Consolidation of all game logic, so any user interface's interaction with game logic is requesting actions by game and having them either accepted or rejected
 // Game will check for validity of actions and carry them out itself, so the ui will have no business logic in it and be completely replaceable and still have the same functioning game
 open Util

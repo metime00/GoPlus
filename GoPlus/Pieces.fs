@@ -1,10 +1,8 @@
 ﻿module Pieces
 
 type Powerup =
-    | Big
+    | Big of int * int
     | Remove of int //how many pieces that can be removed
-    | Vertical
-    | Horizontal
     | L
     | Conway //simulates one step of conway's game of life
     | Shuffle of int //move X% of the pieces in a random direction
@@ -21,9 +19,7 @@ type Cell =
 
 type Shape =
     | Normal
-    | Vertical of int
-    | Horizontal of int
-    | Big of int
+    | Big of int * int
     | L
 
 /// A piece in the game of GoPlus, where the int in some pieces is extension out from the center

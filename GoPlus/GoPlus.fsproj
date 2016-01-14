@@ -49,6 +49,7 @@
     <Compile Include="Player.fs" />
     <Compile Include="Game.fs" />
     <Compile Include="Window.fs" />
+    <Compile Include="Menu.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

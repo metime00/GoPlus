@@ -1,4 +1,7 @@
 ﻿module Window
+// TODO
+// 1. make graphics be images
+// 2. make ghost pieces when mouse is hovering over board to show player what the piece will be like
 
 open Pieces
 open Game
@@ -61,12 +64,20 @@ type Window (gameSize, width, height) as this =
     override this.OnMouseMove args =
         printfn "%i, %i" args.X args.Y
     override this.OnMouseDown args =
+
         if args.X < scale this.ClientSize.Width && args.Y < scale this.ClientSize.Width then
             match turn with
             | Pieces.Color.Black ->
                 let x = args.X / squareSize
                 let y = args.Y / squareSize
-                let result = game.AddPiece (Pieces.Color.Black, Shape.Normal) Pieces.Color.Black (x, y)
+                let result = 
+                    match args.Button with
+                    | MouseButtons.Left ->
+                        game.AddPiece (Pieces.Color.Black, Shape.Normal) Pieces.Color.Black (x, y)
+                    | MouseButtons.Right ->
+                        game.AddPiece (Pieces.Color.Black, Shape.Big (1, 1)) Pieces.Color.Black (x, y)
+                    | MouseButtons.Middle ->
+                        game.AddPiece (Pieces.Color.Black, Shape.Big (0, 2)) Pieces.Color.Black (x, y)
                 match result with
                 | ActionResponse.Accept ->
                     turnDisplay.Text <- "White"
@@ -75,7 +86,12 @@ type Window (gameSize, width, height) as this =
             | Pieces.Color.White ->
                 let x = args.X / squareSize
                 let y = args.Y / squareSize
-                let result = game.AddPiece (Pieces.Color.White, Shape.Normal) Pieces.Color.White (x, y)
+                let result = 
+                    match args.Button with
+                    | MouseButtons.Left ->
+                        game.AddPiece (Pieces.Color.White, Shape.Normal) Pieces.Color.White (x, y)
+                    | MouseButtons.Right ->
+                        game.AddPiece (Pieces.Color.White, Shape.Big (1, 1)) Pieces.Color.White (x, y)
                 match result with
                 | ActionResponse.Accept ->
                     turnDisplay.Text <- "Black"
@@ -98,4 +114,9 @@ type Window (gameSize, width, height) as this =
                 match game.Board.[i,j] with
                 | Some (color, Normal) ->
                     args.Graphics.FillEllipse(brushFromColor(color), i * squareSize, j * squareSize, squareSize, squareSize)
+                | Some (color, Big (xext, yext)) ->
+                    args.Graphics.FillEllipse(brushFromColor(color), (i - xext) * squareSize, (j - yext) * squareSize, squareSize * (1 + 2 * xext), squareSize * (1 + 2 * yext))
+                | Some (color, L) ->
+                    args.Graphics.FillEllipse(brushFromColor(color), (i) * squareSize, (j) * squareSize, squareSize, squareSize * 2)
+                    args.Graphics.FillEllipse(brushFromColor(color), (i - 2) * squareSize, (j) * squareSize, squareSize * 2, squareSize)
                 | None -> ()

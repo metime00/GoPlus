@@ -9,14 +9,10 @@ let pieceCoords shape (x, y) =
     match shape with
     | Normal ->
         [ (x, y) ]
-    | Vertical ext ->
-        [ for j = y - ext to y + ext do yield (x, j) ]
-    | Horizontal ext ->
-        [ for i = x - ext to x + ext do yield (i, y) ]
-    | Big ext ->
+    | Big (xext, yext) ->
         [
-            for i = x - ext to x + ext do
-                for j = y - ext to y + ext do
+            for i = x - xext to x + xext do
+                for j = y - yext to y + yext do
                     yield (i, j)
         ]
     | L ->
@@ -54,11 +50,7 @@ let genCells board =
             match shape with
             | Normal ->
                 Array2D.set outputBoard x y (Cell.Taken col)
-            | Vertical ext ->
-                for (_, j) in pieceCoords shape (x, y) do (Cell.Taken col) |> Array2D.set outputBoard x j
-            | Horizontal ext ->
-                for (i, _) in pieceCoords shape (x, y) do (Cell.Taken col) |> Array2D.set outputBoard i y
-            | Big ext ->
+            | Big _ ->
                 for (i, j) in pieceCoords shape (x, y) do (Cell.Taken col) |> Array2D.set outputBoard i j
             | L ->
                 for (i, j) in pieceCoords shape (x, y) do (Cell.Taken col) |> Array2D.set outputBoard i j
