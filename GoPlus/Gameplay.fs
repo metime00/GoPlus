@@ -104,6 +104,24 @@ let rec apply move state =
             | Black -> Color.White
             | White -> Color.Black
         { seed = state.seed; black = state.black; white = state.white; board = state.board; powerups = state.powerups; nextToMove = next }
+    | MarkDead pieces ->
+        let mutable blackScoreDelta = 0
+        let mutable whiteScoreDelta = 0
+        for (x, y) in pieces do
+            let (color, shape) =
+                match state.board.[x,y] with
+                | Some piece -> piece
+                | None -> failwith "piece expected"
+            match color with
+            | White ->
+                blackScoreDelta <- blackScoreDelta + (List.length (pieceCoords shape (x, y)))
+            | Black ->
+                whiteScoreDelta <- whiteScoreDelta + (List.length (pieceCoords shape (x, y)))
+            | _ -> ()
+        let newBoard = removePieces state.board pieces
+        let newBlack = { color = Color.Black; score = state.black.score + blackScoreDelta; powerup = state.black.powerup }
+        let newWhite = { color = Color.White; score = state.white.score + whiteScoreDelta; powerup = state.white.powerup }
+        { seed = state.seed; black = newBlack; white = newWhite; board = newBoard; powerups = state.powerups; nextToMove = Color.Neutral }
         
 
 let rec valid move state prevState =

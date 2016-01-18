@@ -61,25 +61,17 @@ type Game (size, genop, powerop) =
             Accept
         | Reject message -> Reject message
 
-//    /// Marks the group at the current location dead, gives all its pieces to the player whose color was not marked, and removes the pieces from the board, *probably should remove, because it probably won't be used
-//    member this.MarkDead (x, y) =
-//        let initial = (cells).[x,y]
-//        match initial with
-//        | Taken White -> 
-//            let dead = genGroup (x,y) cells
-//            playerBlack.AddScore (List.length dead)
-//            changeBoard (removePieces board dead)
-//            Accept
-//        | Taken Black ->
-//            let dead = genGroup (x,y) cells
-//            playerWhite.AddScore (List.length dead)
-//            changeBoard (removePieces board dead)
-//            Accept
-//        | Taken Neutral ->
-//            let dead = genGroup (x,y) cells
-//            changeBoard (removePieces board dead)
-//            Accept
-//        | Free -> Reject "No group here to remove"
+    member this.Pass () =
+        let move = Move.Pass
+        state |> apply move |> updateState
+        movesMade.Add move
+        Accept
+
+    member this.MarkDead pieces =
+        let move = (Move.MarkDead pieces)
+        state |> apply move |> updateState
+        movesMade.Add move
+        Accept
 
     /// calculates total score, assuming all groups are alive, returns the two players' scores as (black, white)
     member this.CalulateScore () =
@@ -116,10 +108,12 @@ type Game (size, genop, powerop) =
         (blackScore, whiteScore)
     
     /// given a coordinate, returns all the coordinates of the group occupying that coordinate, for post game scoring.
-    member this.ReturnGroup coord =
+    member this.GetGroup coord =
         genGroup coord (genCells this.Board)
 
     member this.PrevStates = prevStates
+
+    member this.PrevMoves = movesMade
 
     member this.GetScore color =
         match color with
