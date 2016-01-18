@@ -12,7 +12,7 @@ open Gameplay
 
 type Game (size, genop, powerop) =
     let prevStates = new System.Collections.Generic.List<State>()
-    let movesMade = new System.Collections.Generic.List<Move>()
+    let movesMade = new System.Collections.Generic.List<Move list>()
     let mutable state = { //initial state
         seed = new System.Random ();
         black = { color = Color.Black; score = 0; powerup = None };
@@ -33,44 +33,44 @@ type Game (size, genop, powerop) =
 
     /// Adds a piece to this location if it's valid, then checks for dead pieces using the given color (for a situation where white is adding a black piece), returning an ActionResponse to signal success or failure
     member this.AddPiece piece (x, y) =
-        let move = (Move.AddPiece (piece, (x, y)))
+        let moves = [(Move.AddPiece (piece, (x, y)))]
         let koState = 
             if prevStates.Count < 3 then
                 None
             else
                 Some (prevStates.Item (prevStates.Count - 1))
-        match valid move state koState with
+        match valid moves.Head state koState with
         | Accept -> 
-            state |> apply move |> updateState
-            movesMade.Add move
+            state |> apply moves |> updateState
+            movesMade.Add moves
             Accept
         | Reject message -> Reject message
 
     /// Removes a piece if it exists at the given location
     member this.RemovePiece (x, y) =
-        let move = (Move.RemovePiece (x, y))
+        let moves = [(Move.RemovePiece (x, y))]
         let koState = 
             if prevStates.Count < 3 then
                 None
             else
                 Some (prevStates.Item (prevStates.Count - 1))
-        match valid move state koState with
+        match valid moves.Head state koState with
         | Accept -> 
-            state |> apply move |> updateState
-            movesMade.Add move
+            state |> apply moves |> updateState
+            movesMade.Add moves
             Accept
         | Reject message -> Reject message
 
     member this.Pass () =
-        let move = Move.Pass
-        state |> apply move |> updateState
-        movesMade.Add move
+        let moves = [Move.Pass]
+        state |> apply moves |> updateState
+        movesMade.Add moves
         Accept
 
     member this.MarkDead pieces =
-        let move = (Move.MarkDead pieces)
-        state |> apply move |> updateState
-        movesMade.Add move
+        let moves = [(Move.MarkDead pieces)]
+        state |> apply moves |> updateState
+        movesMade.Add moves
         Accept
 
     /// calculates total score, assuming all groups are alive, returns the two players' scores as (black, white)

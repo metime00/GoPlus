@@ -63,7 +63,7 @@ type Window (gameSize, width, height) as this =
         match stage with
         | Play ->
             changeTurn ()
-            if game.PrevMoves.Count <> 0 && game.PrevMoves.Item (game.PrevMoves.Count - 1) = Move.Pass then
+            if game.PrevMoves.Count <> 0 && game.PrevMoves.Item (game.PrevMoves.Count - 1) = [Move.Pass] then
                 stage <- Stage.Scoring
                 turnDisplay.Text <- "Scoring Mode"
                 endGameButton.Text <- "End Game"

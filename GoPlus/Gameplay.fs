@@ -26,7 +26,6 @@ type State = {
 type Move =
     | AddPiece of (Color * Shape) * (int * int) // piece, location
     | RemovePiece of (int * int)
-    | Composite of Move list
     | MarkDead of (int * int) list
     | Pass
 
@@ -41,88 +40,83 @@ let potentialBoard piece color (x, y) board =
         |> genCells
     postCheck
 
-let rec apply move state =
-    printfn "%A" move
-    match move with
-    | AddPiece (piece, (x, y)) ->
-        let temp = addPieces state.board [ (piece, (x, y)) ]
-        let numDead =
-            temp
-            |> genCells
-            |> checkDead state.nextToMove
-        let newBoard =
-            numDead
-            |> List.filter (fun (x, y) -> state.board.[x,y] <> None)
-            |> removePieces temp
-        let addedScore = List.length numDead
-        let newBlack = 
-            if state.nextToMove = Color.Black then
-                { color = Color.Black; score = state.black.score + addedScore; powerup = state.black.powerup }
-            else
-                state.black
-        let newWhite = 
-            if state.nextToMove = Color.White then
-                { color = Color.White; score = state.white.score + addedScore; powerup = state.white.powerup }
-            else
-                state.white
-        let next =
-            match state.nextToMove with
-            | Black -> Color.White
-            | White -> Color.Black
-        { seed = state.seed; black = newBlack; white = newWhite; board = newBoard; powerups = state.powerups; nextToMove = next }
-    | RemovePiece (x, y) ->
-        let size = Array2D.length1 state.board
-        let mutable newBoard = None
-        for i = 0 to size - 1 do
-            for j = 0 to size - 1 do
-                match state.board.[i,j] with
-                | Some (_, shape) -> 
-                    match pieceCoords shape (i, j) |> List.tryFind (fun p -> p = (x, y)) with
-                    | Option.Some p ->
-                        newBoard <- Some (removePieces state.board [ (i, j) ])
-                    | Option.None -> ()
-                | None -> ()
-        let next =
-            match state.nextToMove with
-            | Black -> Color.White
-            | White -> Color.Black
-        match newBoard with
-        | None -> 
-            failwith "No piece at given location"
-        | Some newBoard ->
-            { seed = state.seed; black = state.black; white = state.white; board = newBoard; powerups = state.powerups; nextToMove = next }
-    | Composite moves ->
-        let rec recApply (moves : Move list) state =
-            match moves.Tail with
-            | [] -> apply moves.Head state
-            | _ ->
-                recApply moves.Tail (apply moves.Head state)
-        recApply moves state
-    | Pass ->
-        let next =
-            match state.nextToMove with
-            | Black -> Color.White
-            | White -> Color.Black
-        { seed = state.seed; black = state.black; white = state.white; board = state.board; powerups = state.powerups; nextToMove = next }
-    | MarkDead pieces ->
-        let mutable blackScoreDelta = 0
-        let mutable whiteScoreDelta = 0
-        for (x, y) in pieces do
-            let (color, shape) =
-                match state.board.[x,y] with
-                | Some piece -> piece
-                | None -> failwith "piece expected"
-            match color with
-            | White ->
-                blackScoreDelta <- blackScoreDelta + (List.length (pieceCoords shape (x, y)))
-            | Black ->
-                whiteScoreDelta <- whiteScoreDelta + (List.length (pieceCoords shape (x, y)))
-            | _ -> ()
-        let newBoard = removePieces state.board pieces
-        let newBlack = { color = Color.Black; score = state.black.score + blackScoreDelta; powerup = state.black.powerup }
-        let newWhite = { color = Color.White; score = state.white.score + whiteScoreDelta; powerup = state.white.powerup }
-        { seed = state.seed; black = newBlack; white = newWhite; board = newBoard; powerups = state.powerups; nextToMove = Color.Neutral }
-        
+let rec perform (moves : Move list) state = 
+    let nextState =
+        match moves.Head with
+        | AddPiece (piece, (x, y)) ->
+            let temp = addPieces state.board [ (piece, (x, y)) ]
+            let numDead =
+                temp
+                |> genCells
+                |> checkDead state.nextToMove
+            let newBoard =
+                numDead
+                |> List.filter (fun (x, y) -> state.board.[x,y] <> None)
+                |> removePieces temp
+            let addedScore = List.length numDead
+            let newBlack = 
+                if state.nextToMove = Color.Black then
+                    { color = Color.Black; score = state.black.score + addedScore; powerup = state.black.powerup }
+                else
+                    state.black
+            let newWhite = 
+                if state.nextToMove = Color.White then
+                    { color = Color.White; score = state.white.score + addedScore; powerup = state.white.powerup }
+                else
+                    state.white
+            { seed = state.seed; black = newBlack; white = newWhite; board = newBoard; powerups = state.powerups; nextToMove = state.nextToMove }
+        | RemovePiece (x, y) ->
+            let size = Array2D.length1 state.board
+            let mutable newBoard = None
+            for i = 0 to size - 1 do
+                for j = 0 to size - 1 do
+                    match state.board.[i,j] with
+                    | Some (_, shape) -> 
+                        match pieceCoords shape (i, j) |> List.tryFind (fun p -> p = (x, y)) with
+                        | Option.Some p ->
+                            newBoard <- Some (removePieces state.board [ (i, j) ])
+                        | Option.None -> ()
+                    | None -> ()
+            match newBoard with
+            | None -> 
+                failwith "No piece at given location"
+            | Some newBoard ->
+                { seed = state.seed; black = state.black; white = state.white; board = newBoard; powerups = state.powerups; nextToMove = state.nextToMove }
+        | Pass ->
+            { seed = state.seed; black = state.black; white = state.white; board = state.board; powerups = state.powerups; nextToMove = state.nextToMove }
+        | MarkDead pieces ->
+            let mutable blackScoreDelta = 0
+            let mutable whiteScoreDelta = 0
+            for (x, y) in pieces do
+                let (color, shape) =
+                    match state.board.[x,y] with
+                    | Some piece -> piece
+                    | None -> failwith "piece expected"
+                match color with
+                | White ->
+                    blackScoreDelta <- blackScoreDelta + (List.length (pieceCoords shape (x, y)))
+                | Black ->
+                    whiteScoreDelta <- whiteScoreDelta + (List.length (pieceCoords shape (x, y)))
+                | _ -> ()
+            let newBoard = removePieces state.board pieces
+            let newBlack = { color = Color.Black; score = state.black.score + blackScoreDelta; powerup = state.black.powerup }
+            let newWhite = { color = Color.White; score = state.white.score + whiteScoreDelta; powerup = state.white.powerup }
+            { seed = state.seed; black = newBlack; white = newWhite; board = newBoard; powerups = state.powerups; nextToMove = Color.Neutral }
+    match moves.Tail with
+    | [] -> nextState
+    | tail -> perform moves.Tail nextState
+
+let apply (moves : Move list) state =
+    printfn "%A" moves
+    let newState = perform moves state
+    let nextColor =
+        match state.nextToMove with
+        | Black -> Color.White
+        | White -> Color.Black
+        | Neutral -> Color.Neutral
+    // do random spawny stuff for powerups
+    { seed = newState.seed; black = newState.black; white = newState.white; board = newState.board; powerups = newState.powerups; nextToMove = nextColor }
+
 
 let rec valid move state prevState =
     match move with
@@ -177,15 +171,6 @@ let rec valid move state prevState =
                     | Option.None -> ()
                 | None -> ()
         response
-    | Composite moves ->
-        let rec recValid (moves : Move list) state prevStates =
-            match moves.Tail with
-            | [] -> valid moves.Head state prevStates
-            | _ ->
-                match valid moves.Head state prevState with
-                | Accept -> recValid moves.Tail (apply moves.Head state) (Some state)
-                | Reject message -> Reject message
-        recValid moves state prevState
     | MarkDead coords ->
         Accept
     | Pass ->
