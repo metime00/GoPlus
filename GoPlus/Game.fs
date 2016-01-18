@@ -1,144 +1,90 @@
 ﻿module Game
-// TODO
-// 1. before networking, change the interaction with the game object so there is a state type and a move type so that you have:
-// initial :: State
-// apply :: Move -> State -> State
-// valid :: Move -> State -> ActionResponse (or something similar)
-// so that it's easy to send a move and easy to go from a list of moves and an initial state to any state
-// State would store things like next player to move, board state, player data, game seed
 
 // Consolidation of all game logic, so any user interface's interaction with game logic is requesting actions by game and having them either accepted or rejected
 // Game will check for validity of actions and carry them out itself, so the ui will have no business logic in it and be completely replaceable and still have the same functioning game
 open Util
 open Pieces
-open Board
 open GameOptions
 open BoardGen
+open Board
 open Player
-/// An error checking type that is returned by all commands to the game
-type ActionResponse =
-    | Accept
-    | Reject of string
+open Gameplay
 
 type Game (size, genop, powerop) =
-    let oldBoards = new System.Collections.Generic.List<Option<Piece>[,]>()
-    let mutable board = generate genop size
-    let mutable cells = genCells board
-    let playerBlack = new Player (Black)
-    let playerWhite = new Player (White)
+    let prevStates = new System.Collections.Generic.List<State>()
+    let movesMade = new System.Collections.Generic.List<Move>()
+    let mutable state = { //initial state
+        seed = new System.Random ();
+        black = { color = Color.Black; score = 0; powerup = None };
+        white = { color = Color.White; score = 0; powerup = None };
+        board = generate genop powerop size;
+        powerups = powerop;
+        nextToMove = Color.Black }
     /// The function to advance the board to the next state, should be the only way the board is changed
-    let changeBoard newBoard =
-        oldBoards.Add board
-        board <- newBoard
-        cells <- genCells board
-
-    /// Returns the cells of a potential board after a piece is placed
-    let potentialBoard piece color (x, y) =
-        let preCheck = addPieces board [ (piece, (x, y)) ] // board with potential piece added before captures
-        let postCheck = // board after the potential piece is placed
-            preCheck
-            |> genCells
-            |> checkDead color // checks using the color placed so that if the piece placed is dead, it isn't taken out here before the next check for dead pieces of that color
-            |> removePieces preCheck // if the placing of this piece would capture stones, the stones are captured here, so the piece placed isn't counted as dead if it captures a group
-            |> genCells
-        postCheck
+    let updateState newState =
+        match state.nextToMove with
+            | Black -> printfn "black's move"
+            | White -> printfn "white's move"
+        prevStates.Add state
+        state <- newState
 
     /// Returns the game's board for displaying
-    member this.Board = board
+    member this.Board = state.board
 
     /// Adds a piece to this location if it's valid, then checks for dead pieces using the given color (for a situation where white is adding a black piece), returning an ActionResponse to signal success or failure
-    member this.AddPiece piece color (x, y) =
-        // add bounds checking, existing piece checking, optimality checking, and ko rule
-        let bounds =
-            if List.filter (fun i -> boundCheck i size size = false) (pieceCoords (snd piece) (x, y)) = [] then Accept
-            else Reject "Piece would be out of bounds"
-        let existing = function
-            | Accept ->
-                if List.filter (fun (x, y) -> cells.[x,y] <> Free) (pieceCoords (snd piece) (x, y)) = [] then Accept
-                else Reject "Piece already exists there"
-            | Reject message -> Reject message
-        let optimal = function
-            | Accept ->
-                let potential = potentialBoard piece color (x, y)
-                let lastColorDead =
-                    potential
-                    |> checkDead Neutral // color parameter is neutral because a neutral piece will never be placed
-                    |> List.filter (fun (x, y) -> potential.[x,y] = Cell.Taken color) //only cares about the color who just placed a piece having dead groups
-                if lastColorDead = [] then Accept
-                else Reject "Placing a piece there would cause that piece to be dead"
-            | Reject message -> Reject message
-        let ko = function
-            | Accept ->
-                match oldBoards.Count with
-                | 0 -> Accept
-                | _ ->
-                    let newBoard = potentialBoard piece color (x, y)
-                    let oldBoard = oldBoards.Item (oldBoards.Count - 1) |> genCells
-                    let diff =
-                        [
-                            for i = 0 to size - 1 do
-                                for j = 0 to size - 1 do
-                                    if newBoard.[i,j] <> oldBoard.[i,j] then yield oldBoard.[i,j]
-                        ]
-                    if diff <> [] then Accept
-                    else Reject "Placing that piece would violate the ko rule"
-            | Reject message -> Reject message
-        let success = function
-            | Accept -> //only performs modifications if all checks succeeded
-                let temp = addPieces board [ (piece, (x, y)) ]
-                let numDead =
-                    temp
-                    |> genCells
-                    |> checkDead color
-                numDead
-                |> List.filter (fun (x, y) -> board.[x,y] <> None)
-                |> removePieces temp
-                |> changeBoard
-                match color with // add the points to the player's score who captured pieces
-                | Black -> List.length numDead |> playerBlack.AddScore
-                | White -> List.length numDead |> playerWhite.AddScore
-                | Neutral -> ()
-                Accept
-            | Reject message -> Reject message
-        bounds |> existing |> optimal |> ko |> success //does a sequence of checks and returns whether or not a problem occured and where
+    member this.AddPiece piece (x, y) =
+        let move = (Move.AddPiece (piece, (x, y)))
+        let koState = 
+            if prevStates.Count < 3 then
+                None
+            else
+                Some (prevStates.Item (prevStates.Count - 1))
+        match valid move state koState with
+        | Accept -> 
+            state |> apply move |> updateState
+            movesMade.Add move
+            Accept
+        | Reject message -> Reject message
 
     /// Removes a piece if it exists at the given location
     member this.RemovePiece (x, y) =
-        let mutable response = Reject "No piece at given location"
-        for i = 0 to size - 1 do
-            for j = 0 to size - 1 do
-                match board.[i,j] with
-                | Some (_, shape) -> 
-                    match pieceCoords shape (i, j) |> List.tryFind (fun p -> p = (x, y)) with
-                    | Option.Some p ->
-                        changeBoard (removePieces board [ (i, j) ])
-                        response <- Accept
-                    | Option.None -> ()
-                | None -> ()
-        response
+        let move = (Move.RemovePiece (x, y))
+        let koState = 
+            if prevStates.Count < 3 then
+                None
+            else
+                Some (prevStates.Item (prevStates.Count - 1))
+        match valid move state koState with
+        | Accept -> 
+            state |> apply move |> updateState
+            movesMade.Add move
+            Accept
+        | Reject message -> Reject message
 
-    /// Marks the group at the current location dead, gives all its pieces to the player whose color was not marked, and removes the pices from the board
-    member this.MarkDead (x, y) =
-        let initial = (cells).[x,y]
-        match initial with
-        | Taken White -> 
-            let dead = genGroup (x,y) cells
-            playerBlack.AddScore (List.length dead)
-            changeBoard (removePieces board dead)
-            Accept
-        | Taken Black ->
-            let dead = genGroup (x,y) cells
-            playerWhite.AddScore (List.length dead)
-            changeBoard (removePieces board dead)
-            Accept
-        | Taken Neutral ->
-            let dead = genGroup (x,y) cells
-            changeBoard (removePieces board dead)
-            Accept
-        | Free -> Reject "No group here to remove"
-    /// Ends the game and calculates total score, assumes all groups are alive, adds to score by enclosed empty squares
+//    /// Marks the group at the current location dead, gives all its pieces to the player whose color was not marked, and removes the pieces from the board, *probably should remove, because it probably won't be used
+//    member this.MarkDead (x, y) =
+//        let initial = (cells).[x,y]
+//        match initial with
+//        | Taken White -> 
+//            let dead = genGroup (x,y) cells
+//            playerBlack.AddScore (List.length dead)
+//            changeBoard (removePieces board dead)
+//            Accept
+//        | Taken Black ->
+//            let dead = genGroup (x,y) cells
+//            playerWhite.AddScore (List.length dead)
+//            changeBoard (removePieces board dead)
+//            Accept
+//        | Taken Neutral ->
+//            let dead = genGroup (x,y) cells
+//            changeBoard (removePieces board dead)
+//            Accept
+//        | Free -> Reject "No group here to remove"
+
+    /// calculates total score, assuming all groups are alive, returns the two players' scores as (black, white)
     member this.CalulateScore () =
         let visited = (noVisits size)
+        let cells = genCells state.board
         /// Returns the nonempty pieces adjacent
         let findEnclosing (x, y) = 
             let output =
@@ -146,6 +92,8 @@ type Game (size, genop, powerop) =
                 |> List.filter (fun (x, y) -> boundCheck (x, y) (size) (size))
                 |> List.filter (fun (x, y) -> cells.[x,y] <> Free)
             output
+        let mutable blackScore = state.black.score
+        let mutable whiteScore = state.white.score
         for i = 0 to size - 1 do
             for j = 0 to size - 1 do
                 if not visited.[i,j] && cells.[i,j] = Free then 
@@ -160,13 +108,20 @@ type Game (size, genop, powerop) =
                             else None
                     match enclosingColor enclosingPieces cells.[fst enclosingPieces.[0], snd enclosingPieces.[0]] with
                     | Some (Taken Black) ->
-                        playerBlack.AddScore (List.length group)
+                        blackScore <- blackScore + (List.length group)
                     | Some (Taken White) ->
-                        playerWhite.AddScore (List.length group)
+                        whiteScore <- whiteScore + (List.length group)
                     | Some (Taken Neutral) -> ()
                     | None -> ()
+        (blackScore, whiteScore)
+    
+    /// given a coordinate, returns all the coordinates of the group occupying that coordinate, for post game scoring.
+    member this.ReturnGroup coord =
+        genGroup coord (genCells this.Board)
+
+    member this.PrevStates = prevStates
 
     member this.GetScore color =
         match color with
-        | Pieces.Color.Black -> playerBlack.Score
-        | Pieces.Color.White -> playerWhite.Score
+        | Pieces.Color.Black -> state.black.score
+        | Pieces.Color.White -> state.white.score

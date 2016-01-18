@@ -4,5 +4,5 @@ open Pieces
 open Board
 open GameOptions
 
-let generate option size =
+let generate genop powerop size =
     board size

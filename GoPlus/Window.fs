@@ -4,6 +4,7 @@
 // 2. make ghost pieces when mouse is hovering over board to show player what the piece will be like
 
 open Pieces
+open Gameplay
 open Game
 open GameOptions
 open System
@@ -34,8 +35,8 @@ type Window (gameSize, width, height) as this =
     let endGameButton = new Button ()
 
     let endGame args =
-        game.CalulateScore ()
-        MessageBox.Show(String.Format("black score: {0}, white score: {1}", game.GetScore Pieces.Color.Black, game.GetScore Pieces.Color.White)) |> ignore
+        let (blackScore, whiteScore) = game.CalulateScore ()
+        MessageBox.Show(String.Format("black score: {0}, white score: {1}", blackScore, whiteScore)) |> ignore
         ()
 
     do
@@ -62,7 +63,7 @@ type Window (gameSize, width, height) as this =
     // Window will handle timer and whose turn it is, it will translate ui actions into function calls on Game.
     // It decides when things happen, Game implements them
     override this.OnMouseMove args =
-        printfn "%i, %i" args.X args.Y
+        ()
     override this.OnMouseDown args =
 
         if args.X < scale this.ClientSize.Width && args.Y < scale this.ClientSize.Width then
@@ -73,11 +74,11 @@ type Window (gameSize, width, height) as this =
                 let result = 
                     match args.Button with
                     | MouseButtons.Left ->
-                        game.AddPiece (Pieces.Color.Black, Shape.Normal) Pieces.Color.Black (x, y)
+                        game.AddPiece (Pieces.Color.Black, Shape.Normal) (x, y)
                     | MouseButtons.Right ->
-                        game.AddPiece (Pieces.Color.Black, Shape.Big (1, 1)) Pieces.Color.Black (x, y)
+                        game.AddPiece (Pieces.Color.Black, Shape.Big (1, 1)) (x, y)
                     | MouseButtons.Middle ->
-                        game.AddPiece (Pieces.Color.Black, Shape.Big (0, 2)) Pieces.Color.Black (x, y)
+                        game.AddPiece (Pieces.Color.Black, Shape.Big (0, 2)) (x, y)
                 match result with
                 | ActionResponse.Accept ->
                     turnDisplay.Text <- "White"
@@ -89,9 +90,9 @@ type Window (gameSize, width, height) as this =
                 let result = 
                     match args.Button with
                     | MouseButtons.Left ->
-                        game.AddPiece (Pieces.Color.White, Shape.Normal) Pieces.Color.White (x, y)
+                        game.AddPiece (Pieces.Color.White, Shape.Normal) (x, y)
                     | MouseButtons.Right ->
-                        game.AddPiece (Pieces.Color.White, Shape.Big (1, 1)) Pieces.Color.White (x, y)
+                        game.AddPiece (Pieces.Color.White, Shape.Big (1, 1)) (x, y)
                 match result with
                 | ActionResponse.Accept ->
                     turnDisplay.Text <- "Black"
