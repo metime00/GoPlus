@@ -39,7 +39,21 @@ type Game (size, genop, powerop) =
                 None
             else
                 Some (prevStates.Item (prevStates.Count - 1))
-        match valid moves.Head state koState with
+        match valid moves state koState with
+        | Accept -> 
+            state |> apply moves |> updateState
+            movesMade.Add moves
+            Accept
+        | Reject message -> Reject message
+    /// Adds a piece to this location if it's valid, then checks for dead pieces using the given color (for a situation where white is adding a black piece), returning an ActionResponse to signal success or failure
+    member this.AddPieces pieces =
+        let moves = List.map (fun piece -> Move.AddPiece piece) pieces
+        let koState = 
+            if prevStates.Count < 3 then
+                None
+            else
+                Some (prevStates.Item (prevStates.Count - 1))
+        match valid moves state koState with
         | Accept -> 
             state |> apply moves |> updateState
             movesMade.Add moves
@@ -54,7 +68,7 @@ type Game (size, genop, powerop) =
                 None
             else
                 Some (prevStates.Item (prevStates.Count - 1))
-        match valid moves.Head state koState with
+        match valid moves state koState with
         | Accept -> 
             state |> apply moves |> updateState
             movesMade.Add moves

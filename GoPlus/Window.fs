@@ -85,7 +85,13 @@ type Window (gameSize, width, height) as this =
                     | MouseButtons.Left ->
                         game.AddPiece (Pieces.Color.Black, Shape.Normal) (x, y)
                     | MouseButtons.Right ->
-                        game.AddPiece (Pieces.Color.Black, Shape.Big (1, 1)) (x, y)
+                        let pieces =
+                            [
+                                for i = -1 to 1 do
+                                    for j = -1 to 1 do
+                                        yield ((Pieces.Color.Black, Shape.Normal), (x + i, y + j))
+                            ]
+                        game.AddPieces pieces
                     | MouseButtons.Middle ->
                         game.AddPiece (Pieces.Color.Black, Shape.Big (0, 2)) (x, y)
                 match result with

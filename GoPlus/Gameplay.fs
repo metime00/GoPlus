@@ -118,60 +118,69 @@ let apply (moves : Move list) state =
     { seed = newState.seed; black = newState.black; white = newState.white; board = newState.board; powerups = newState.powerups; nextToMove = nextColor }
 
 
-let rec valid move state prevState =
-    match move with
-    | AddPiece (piece, (x, y)) ->
-        let size = Array2D.length1 state.board
-        let cells = genCells state.board
-        let bounds =
-            if List.filter (fun i -> boundCheck i size size = false) (pieceCoords (snd piece) (x, y)) = [] then Accept
-            else Reject "Piece would be out of bounds"
-        let existing = function
-            | Accept ->
-                if List.filter (fun (x, y) -> cells.[x,y] <> Free) (pieceCoords (snd piece) (x, y)) = [] then Accept
-                else Reject "Piece already exists there"
-            | Reject message -> Reject message
-        let optimal = function
-            | Accept ->
-                let potential = potentialBoard piece state.nextToMove (x, y) state.board
-                let lastColorDead =
-                    potential
-                    |> checkDead Neutral // color parameter is neutral because a neutral piece will never be placed
-                    |> List.filter (fun (x, y) -> potential.[x,y] = Cell.Taken state.nextToMove) //only cares about the color who just placed a piece having dead groups
-                if lastColorDead = [] then Accept
-                else Reject "Placing a piece there would cause that piece to be dead"
-            | Reject message -> Reject message
-        let ko = function //prevState is the last state after the current player moved. AKA not the last state, but the one before it.
-            | Accept ->
-                match prevState with
-                | None -> Accept
-                | Some prevState ->
-                    let newBoard = potentialBoard piece state.nextToMove (x, y) state.board
-                    let oldBoard = prevState.board |> genCells
-                    let diff =
-                        [
-                            for i = 0 to size - 1 do
-                                for j = 0 to size - 1 do
-                                    if newBoard.[i,j] <> oldBoard.[i,j] then yield oldBoard.[i,j]
-                        ]
-                    if diff <> [] then Accept
-                    else Reject "Placing that piece would violate the ko rule"
-            | Reject message -> Reject message
-        bounds |> existing |> optimal |> ko //does a sequence of checks and returns whether or not a problem occured and where
-    | RemovePiece (x, y) ->
-        let size = Array2D.length1 state.board
-        let mutable response = Reject "No piece at given location"
-        for i = 0 to size - 1 do
-            for j = 0 to size - 1 do
-                match state.board.[i,j] with
-                | Some (_, shape) -> 
-                    match pieceCoords shape (i, j) |> List.tryFind (fun p -> p = (x, y)) with
-                    | Option.Some p ->
-                        response <- Accept
-                    | Option.None -> ()
-                | None -> ()
-        response
-    | MarkDead coords ->
-        Accept
-    | Pass ->
-        Accept
+let rec valid (moves : Move list) state prevState =
+    let response =
+        match moves.Head with
+        | AddPiece (piece, (x, y)) ->
+            let size = Array2D.length1 state.board
+            let cells = genCells state.board
+            let bounds =
+                if List.filter (fun i -> boundCheck i size size = false) (pieceCoords (snd piece) (x, y)) = [] then Accept
+                else Reject "Piece would be out of bounds"
+            let existing = function
+                | Accept ->
+                    if List.filter (fun (x, y) -> cells.[x,y] <> Free) (pieceCoords (snd piece) (x, y)) = [] then Accept
+                    else Reject "Piece already exists there"
+                | Reject message -> Reject message
+            let optimal = function
+                | Accept ->
+                    let potential = potentialBoard piece state.nextToMove (x, y) state.board
+                    let lastColorDead =
+                        potential
+                        |> checkDead Neutral // color parameter is neutral because a neutral piece will never be placed
+                        |> List.filter (fun (x, y) -> potential.[x,y] = Cell.Taken state.nextToMove) //only cares about the color who just placed a piece having dead groups
+                    if lastColorDead = [] then Accept
+                    else Reject "Placing a piece there would cause that piece to be dead"
+                | Reject message -> Reject message
+            let ko = function //prevState is the last state after the current player moved. AKA not the last state, but the one before it.
+                | Accept ->
+                    match prevState with
+                    | None -> Accept
+                    | Some prevState ->
+                        let newBoard = potentialBoard piece state.nextToMove (x, y) state.board
+                        let oldBoard = prevState.board |> genCells
+                        let diff =
+                            [
+                                for i = 0 to size - 1 do
+                                    for j = 0 to size - 1 do
+                                        if newBoard.[i,j] <> oldBoard.[i,j] then yield oldBoard.[i,j]
+                            ]
+                        if diff <> [] then Accept
+                        else Reject "Placing that piece would violate the ko rule"
+                | Reject message -> Reject message
+            bounds |> existing |> optimal |> ko //does a sequence of checks and returns whether or not a problem occured and where
+        | RemovePiece (x, y) ->
+            let size = Array2D.length1 state.board
+            let mutable response = Reject "No piece at given location"
+            for i = 0 to size - 1 do
+                for j = 0 to size - 1 do
+                    match state.board.[i,j] with
+                    | Some (_, shape) -> 
+                        match pieceCoords shape (i, j) |> List.tryFind (fun p -> p = (x, y)) with
+                        | Option.Some p ->
+                            response <- Accept
+                        | Option.None -> ()
+                    | None -> ()
+            response
+        | MarkDead coords ->
+            Accept
+        | Pass ->
+            Accept
+    match response with
+    | Accept ->
+        match moves.Tail with
+        | [] -> Accept
+        | tail ->
+            valid tail (perform [moves.Head] state) prevState
+    | Reject message->
+        Reject message
