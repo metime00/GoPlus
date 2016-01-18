@@ -4,6 +4,7 @@
 // 2. make ghost pieces when mouse is hovering over board to show player what the piece will be like
 
 open Pieces
+open Board
 open Gameplay
 open Game
 open GameOptions
@@ -11,15 +12,21 @@ open System
 open System.Collections.Generic
 open System.Drawing
 open System.Windows.Forms
- 
-///scales a given coordinate by a certain amount and returns it as an int
-let scale coord = (int) ((float coord) * 2.0 / 3.0)
 
 let brushFromColor color =
     match color with
     |  Pieces.Color.Neutral -> Brushes.Gray
     |  Pieces.Color.Black -> Brushes.Black
     |  Pieces.Color.White -> Brushes.White
+
+let transparentBlack = new SolidBrush (Color.FromArgb (128, Color.Black))
+let transparentWhite = new SolidBrush (Color.FromArgb (128, Color.White))
+
+let transparentBrushFromColor color =
+    match color with
+    |  Pieces.Color.Neutral -> Brushes.Gray
+    |  Pieces.Color.Black -> transparentBlack :> Brush
+    |  Pieces.Color.White -> transparentWhite :> Brush
 
 type Stage =
     | Play
@@ -28,15 +35,20 @@ type Stage =
 type Window (gameSize, gen, powerop, width, height) as this =
     inherit Form ()
 
+    ///scales a given coordinate by a certain amount and returns it as an int
+    let scale coord = (int) ((float coord) * 2.0 / 3.0)
+
     let mutable turn = Pieces.Color.Black
     let mutable stage = Stage.Play
+
+    let mutable (mouseX, mouseY) = (0, 0)
 
     /// the collection of coordinates of pieces that are marked tentatively as dead during scoring
     let deadGroups = new System.Collections.Generic.List<int * int> ()
 
     let game = new Game (gameSize, gen, powerop)
 
-    let squareSize = (scale width) / (gameSize)
+    let mutable squareSize = (scale width) / (gameSize)
 
     let scoreDisplay = new Label ()
     let turnDisplay = new Label ()
@@ -125,8 +137,8 @@ type Window (gameSize, gen, powerop, width, height) as this =
         this.SetStyle (ControlStyles.AllPaintingInWmPaint, true)
         this.SetStyle (ControlStyles.UserPaint, true)
         this.SetStyle (ControlStyles.OptimizedDoubleBuffer, true)
-        this.FormBorderStyle <- FormBorderStyle.Fixed3D
-        this.MaximizeBox <- false
+        this.FormBorderStyle <- FormBorderStyle.Sizable
+        this.MaximizeBox <- true
         this.BackColor <- Color.Tan
         scoreDisplay.Text <- (game.GetScore turn).ToString ()
         scoreDisplay.Dock <- DockStyle.Right
@@ -147,7 +159,15 @@ type Window (gameSize, gen, powerop, width, height) as this =
     // Window will handle timer and whose turn it is, it will translate ui actions into function calls on Game.
     // It decides when things happen, Game implements them
     override this.OnMouseMove args =
-        ()
+        mouseX <- args.X
+        mouseY <- args.Y
+        this.Invalidate ()
+
+    override this.OnResize args =
+        base.OnResize args
+        squareSize <- (scale this.ClientSize.Width ) / gameSize
+        turnDisplay.Location <- new Point(this.ClientSize.Width - turnDisplay.Size.Width, scoreDisplay.Size.Height)
+        this.Invalidate ()
     
     override this.OnMouseDown args =
         if args.X < scale this.ClientSize.Width && args.Y < scale this.ClientSize.Width then
@@ -169,6 +189,16 @@ type Window (gameSize, gen, powerop, width, height) as this =
             args.Graphics.DrawLine(Pens.Black, 0, i * squareSize + (squareSize / 2), scale this.ClientSize.Width, i * squareSize + (squareSize / 2))
         for j = 0 to size2 - 1 do
             args.Graphics.DrawLine(Pens.Black, j * squareSize + (squareSize / 2), 0, j * squareSize + (squareSize / 2), scale this.ClientSize.Width)
+
+        //draw a ghost piece over where the player would place a piece
+        if mouseX < scale this.ClientSize.Width && mouseY < scale this.ClientSize.Width then
+            match stage with
+            | Play ->
+                let x = mouseX / squareSize
+                let y = mouseY / squareSize
+                args.Graphics.FillEllipse(transparentBrushFromColor(turn), x * squareSize, y * squareSize, squareSize, squareSize) 
+            | _ -> ()
+
         for i = 0 to size1 - 1 do
             for j = 0 to size2 - 1 do
                 if not (deadGroups.Contains (i, j)) then
