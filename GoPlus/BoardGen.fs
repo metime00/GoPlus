@@ -4,5 +4,5 @@ open Pieces
 open Board
 open GameOptions
 
-let generate genop powerop size =
+let generate seed genop powerop size =
     board size

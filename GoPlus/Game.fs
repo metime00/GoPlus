@@ -13,12 +13,14 @@ open Gameplay
 type Game (size, genop, powerop) =
     let prevStates = new System.Collections.Generic.List<State>()
     let movesMade = new System.Collections.Generic.List<Move list>()
-    let mutable state = { //initial state
-        seed = new System.Random ();
+    let mutable state = 
+        let seed = new System.Random ()
+        { //initial state
+        seed = seed;
         black = { color = Color.Black; score = 0; powerup = None };
         white = { color = Color.White; score = 0; powerup = None };
-        board = generate genop powerop size;
-        powerups = powerop;
+        board = generate seed genop powerop size;
+        powerups = (powerop, genop.PowerupGen);
         nextToMove = Color.Black }
     /// The function to advance the board to the next state, should be the only way the board is changed
     let updateState newState =
@@ -121,9 +123,9 @@ type Game (size, genop, powerop) =
                     | None -> ()
         (blackScore, whiteScore)
     
-    /// given a coordinate, returns all the coordinates of the group occupying that coordinate, for post game scoring.
+    /// given a coordinate, returns all the coordinates of the pieces of the group occupying that coordinate, for post game scoring.
     member this.GetGroup coord =
-        genGroup coord (genCells this.Board)
+        List.filter (fun (x, y) -> state.board.[x, y] <> None) (genGroup coord (genCells this.Board))
 
     member this.PrevStates = prevStates
 

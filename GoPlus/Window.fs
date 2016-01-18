@@ -25,15 +25,16 @@ type Stage =
     | Play
     | Scoring
 
-type Window (gameSize, width, height) as this =
+type Window (gameSize, gen, powerop, width, height) as this =
     inherit Form ()
 
     let mutable turn = Pieces.Color.Black
     let mutable stage = Stage.Play
 
+    /// the collection of coordinates of pieces that are marked tentatively as dead during scoring
     let deadGroups = new System.Collections.Generic.List<int * int> ()
 
-    let game = new Game (gameSize, { NeutralGen = false; PowerupGen = false }, Vanilla)
+    let game = new Game (gameSize, gen, powerop)
 
     let squareSize = (scale width) / (gameSize)
 

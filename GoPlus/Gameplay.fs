@@ -19,7 +19,7 @@ type State = {
     black : Player;
     white : Player;
     board : Option<Piece>[,];
-    powerups : PowerOption;
+    powerups : PowerOption * bool;
     nextToMove : Color } //next move says who is allowed to play a move next turn
 
 /// A type corresponding to different actions that can be taken, such as placing a piece, removing a piece, passing, and removing all the stones deemed dead during scoring
