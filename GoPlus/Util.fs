@@ -4,3 +4,5 @@
 let boundCheck (x, y) width height = x >= 0 && x < width && y >= 0 && y < height
 /// A board that is initially marked all not visited
 let noVisits size = Array2D.create (size) (size) false
+/// Returns the value of x on a normal distribution, centered around 0
+let normal x = (2.718 ** (- 0.5 * x * x)) / (sqrt (2.0 * 3.142))

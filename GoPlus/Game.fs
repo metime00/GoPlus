@@ -112,9 +112,14 @@ type Game (size, genop, powerop) =
                         match pieces with
                         | [] -> Some comparePiece
                         | (x, y) :: _ ->
-                            if comparePiece = cells.[x,y] then enclosingColor (List.tail pieces) comparePiece
+                            if comparePiece = cells.[x,y] || cells.[x,y] = Cell.Taken Neutral then 
+                                if cells.[x,y] = Cell.Taken Neutral then
+                                    printf "omg im neutral"
+                                enclosingColor (List.tail pieces) comparePiece
                             else None
-                    match enclosingColor enclosingPieces cells.[fst enclosingPieces.[0], snd enclosingPieces.[0]] with
+                    //find the first enclosing color that isn't neutral, since neutral can count for both, but can't get score itself
+                    let colorSample = enclosingPieces |> List.filter (fun (x, y) -> cells.[x, y] <> Cell.Taken Neutral) |> List.head
+                    match enclosingColor enclosingPieces cells.[fst colorSample, snd colorSample] with
                     | Some (Taken Black) ->
                         blackScore <- blackScore + (List.length group)
                     | Some (Taken White) ->
