@@ -46,7 +46,7 @@ type Window (gameSize, gen, powerop, width, height) as this =
     /// the collection of coordinates of pieces that are marked tentatively as dead during scoring
     let deadGroups = new System.Collections.Generic.List<int * int> ()
 
-    let game = new Game (gameSize, gen, powerop)
+    let game = new Game (gameSize, gen, powerop, (new Random ()).Next ())
 
     let mutable squareSize = (scale width) / (gameSize)
 

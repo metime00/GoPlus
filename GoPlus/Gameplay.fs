@@ -15,7 +15,7 @@ type ActionResponse =
 
 /// A type corresponding to any stage of the game. If you're given a state, you have enough info to play a game from that. If you have a list of consecutive states, you have the entire history of a game
 type State = {
-    seed : System.Random;
+    seed : int;
     black : Player;
     white : Player;
     board : Option<Piece>[,];
@@ -39,6 +39,18 @@ let potentialBoard piece color (x, y) board =
         |> removePieces preCheck // if the placing of this piece would capture stones, the stones are captured here, so the piece placed isn't counted as dead if it captures a group
         |> genCells
     postCheck
+
+/// Takes a seed and a board and returns a unique hash from them
+let genHash seed (board : Option<Piece> [,]) =
+    let values = 
+        [ 
+            for i = 0 to Array2D.length1 board - 1 do 
+                for j = 0 to Array2D.length2 board - 1 do
+                    match board.[i,j] with
+                    | None -> ()
+                    | Some x -> yield x.GetHashCode ()
+        ]
+    List.fold (fun cur next -> (cur ^^^ next) >>> 1) seed values
 
 let rec perform (moves : Move list) state = 
     let nextState =
@@ -114,7 +126,10 @@ let apply (moves : Move list) state =
         | Black -> Color.White
         | White -> Color.Black
         | Neutral -> Color.Neutral
-    // do random spawny stuff for powerups
+    
+    //do random powerup generation, using the propogated seed
+    let randy = new System.Random (genHash state.seed state.board)
+
     { seed = newState.seed; black = newState.black; white = newState.white; board = newState.board; powerups = newState.powerups; nextToMove = nextColor }
 
 

@@ -10,11 +10,11 @@ open Board
 open Player
 open Gameplay
 
-type Game (size, genop, powerop) =
+type Game (size, genop, powerop, seed) =
     let prevStates = new System.Collections.Generic.List<State>()
     let movesMade = new System.Collections.Generic.List<Move list>()
     let mutable state = 
-        let seed = new System.Random ()
+        let seed = seed
         { //initial state
         seed = seed;
         black = { color = Color.Black; score = 0; powerup = None };
@@ -126,7 +126,7 @@ type Game (size, genop, powerop) =
                         whiteScore <- whiteScore + (List.length group)
                     | Some (Taken Neutral) -> ()
                     | None -> ()
-        (blackScore, whiteScore)
+        (float blackScore, (float whiteScore) + 6.5)
     
     /// given a coordinate, returns all the coordinates of the pieces of the group occupying that coordinate, for post game scoring.
     member this.GetGroup coord =
