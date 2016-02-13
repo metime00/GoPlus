@@ -66,14 +66,22 @@ let rec perform (moves : Move list) state =
                 |> List.filter (fun (x, y) -> state.board.[x,y] <> None)
                 |> removePieces temp
             let addedScore = List.length numDead
+            let newPowerup =
+                let coord = List.tryFind (fun (x, y) -> match state.board.[x, y] with Some (Pickup _, Normal) -> true | _ -> false) numDead
+                match coord with
+                | Some (x, y) -> 
+                    match Option.get state.board.[x,y] |> fst with
+                    | Pickup power -> Some power
+                    | _ -> failwith "not given a powerup"
+                | None -> None
             let newBlack = 
                 if state.nextToMove = Color.Black then
-                    { color = Color.Black; score = state.black.score + addedScore; powerup = state.black.powerup }
+                    { color = Color.Black; score = state.black.score + addedScore; powerup = newPowerup }
                 else
                     state.black
             let newWhite = 
                 if state.nextToMove = Color.White then
-                    { color = Color.White; score = state.white.score + addedScore; powerup = state.white.powerup }
+                    { color = Color.White; score = state.white.score + addedScore; powerup = newPowerup }
                 else
                     state.white
             { seed = state.seed; black = newBlack; white = newWhite; board = newBoard; powerups = state.powerups; nextToMove = state.nextToMove }
