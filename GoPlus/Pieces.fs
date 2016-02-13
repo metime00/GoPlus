@@ -1,14 +1,16 @@
 ﻿module Pieces
 
 type Powerup =
-    | Big of int * int
+    | Big of (int * int)
     | Remove of int //how many pieces that can be removed
-    | Multiple of int //how many pieces you can place
+    /// the boolean is true when you place pieces of your own color and false when you place pieces of the opposing color
+    | Multiple of int * bool //how many pieces you can place
     | L
     | Conway //simulates one step of conway's game of life
-    | Shuffle of int //move X% of the pieces in a random direction
+    /// move X% of the pieces in a random direction
+    | Shuffle of int
 
-type Color =
+and Color =
     | Black
     | White
     | Neutral

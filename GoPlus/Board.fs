@@ -73,10 +73,12 @@ let checkDead lastColor board =
     let dead = new System.Collections.Generic.List<(int * int)>()
     let size = Array2D.length1 board
     let visited = (noVisits size)
-    /// Gets adjacent empty spaces
-    let findEmpty (x, y) =
+    let findAdjacent (x, y) =
         [(x - 1, y); (x + 1, y); (x, y - 1); (x, y + 1)] 
         |> List.filter (fun (x, y) -> boundCheck (x, y) (size) (size))
+    /// Gets adjacent empty spaces
+    let findEmpty (x, y) =
+        findAdjacent (x, y)
         |> List.filter (fun (x, y) -> board.[x,y] = Cell.Free)
     // Iterates through the board, finding out what pieces are dead and adding them to the list of dead pieces
     for i = 0 to size - 1 do
@@ -84,6 +86,20 @@ let checkDead lastColor board =
             if not visited.[i,j] then
                 match board.[i,j] with
                 | Cell.Free -> ()
+                | Cell.Taken (Pickup (_)) ->
+                    let enclosing = 
+                        findAdjacent (i, j)
+                        |> List.filter (fun (x, y) -> board.[x,y] = Cell.Taken White || board.[x,y] = Cell.Taken Black)
+                    if enclosing <> [] then
+                        let singleColor =
+                            let (x, y) = List.head enclosing
+                            let headCell = board.[x,y]
+                            match List.tryFind (fun (x, y) -> board.[x,y] <> headCell) enclosing with
+                            | Some _ -> false
+                            | None -> true
+                        if singleColor && List.length enclosing = 4 then
+                            dead.Add (i, j)
+                            true |> Array2D.set visited i j
                 | Cell.Taken groupColor when groupColor = lastColor -> ()
                 | Cell.Taken groupColor ->
                     let group = genGroup (i,j) board

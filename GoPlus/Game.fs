@@ -20,7 +20,7 @@ type Game (size, genop, powerop, seed) =
         black = { color = Color.Black; score = 0; powerup = None };
         white = { color = Color.White; score = 0; powerup = None };
         board = generate seed genop powerop size;
-        powerups = (powerop, genop.PowerupGen);
+        powerups = powerop;
         nextToMove = Color.Black }
     /// The function to advance the board to the next state, should be the only way the board is changed
     let updateState newState =

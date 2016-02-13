@@ -1,13 +1,19 @@
 ﻿module Window
 // TODO
-// 1. make graphics be images
-// 2. make ghost pieces when mouse is hovering over board to show player what the piece will be like
+// 0. Powerups must be completely enclosed by a single color to be considered captured
+// 1. move all game state and current player and move choosing to Game and make Window interact with game only through game.interact and game.pass methods
+// game will return an ActionResponse telling Window whether or not the other player is sending bad info or if the current user needs to try their move again
+// game will have a method or property to tell Window how many (x, y) coords it needs, then window will collect the user input coords to deliver into the game
+// 2. there will be a problem with user feedback for multiple move powerups. The user wants to be able to see the effects after every piece placed if they get to place 3 pieces,
+// but the way moves are applied would only do them all at once. Make it so the Window can display intermediate states
+// 3. make graphics be images
 
 open Pieces
 open Board
 open Gameplay
 open Game
 open GameOptions
+open Network
 open System
 open System.Collections.Generic
 open System.Drawing
@@ -18,6 +24,7 @@ let brushFromColor color =
     |  Pieces.Color.Neutral -> Brushes.Gray
     |  Pieces.Color.Black -> Brushes.Black
     |  Pieces.Color.White -> Brushes.White
+    |  Pieces.Color.Pickup (_) -> Brushes.Cyan
 
 let transparentBlack = new SolidBrush (Color.FromArgb (128, Color.Black))
 let transparentWhite = new SolidBrush (Color.FromArgb (128, Color.White))
@@ -32,7 +39,7 @@ type Stage =
     | Play
     | Scoring
 
-type Window (gameSize, gen, powerop, width, height) as this =
+type Window (gameSize, gen, powerop, width, height, client) as this =
     inherit Form ()
 
     ///scales a given coordinate by a certain amount and returns it as an int
@@ -177,6 +184,12 @@ type Window (gameSize, gen, powerop, width, height) as this =
             | Scoring ->
                 markGroup args
 
+    member this.SignalReceived = signalReceived.Publish
+
+    member this.OnSignalReceived args =
+        
+        ()
+    
     override this.OnPaint args =
         scoreDisplay.Text <-
             match stage with

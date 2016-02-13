@@ -19,7 +19,7 @@ type State = {
     black : Player;
     white : Player;
     board : Option<Piece>[,];
-    powerups : PowerOption * bool;
+    powerups : PowerOption;
     nextToMove : Color } //next move says who is allowed to play a move next turn
 
 /// A type corresponding to different actions that can be taken, such as placing a piece, removing a piece, passing, and removing all the stones deemed dead during scoring
@@ -118,21 +118,6 @@ let rec perform (moves : Move list) state =
     | [] -> nextState
     | tail -> perform moves.Tail nextState
 
-let apply (moves : Move list) state =
-    printfn "%A" moves
-    let newState = perform moves state
-    let nextColor =
-        match state.nextToMove with
-        | Black -> Color.White
-        | White -> Color.Black
-        | Neutral -> Color.Neutral
-    
-    //do random powerup generation, using the propogated seed
-    let randy = new System.Random (genHash state.seed state.board)
-
-    { seed = newState.seed; black = newState.black; white = newState.white; board = newState.board; powerups = newState.powerups; nextToMove = nextColor }
-
-
 let rec valid (moves : Move list) state prevState =
     let response =
         match moves.Head with
@@ -199,3 +184,45 @@ let rec valid (moves : Move list) state prevState =
             valid tail (perform [moves.Head] state) prevState
     | Reject message->
         Reject message
+
+let apply (moves : Move list) state =
+    printfn "%A" moves
+    let newState = perform moves state
+    let nextColor =
+        match state.nextToMove with
+        | Black -> Color.White
+        | White -> Color.Black
+        | Neutral -> Color.Neutral
+    
+    //do random powerup generation, using the propogated seed
+    let randy = new System.Random (genHash state.seed state.board)
+    let powerupedBoard =
+        let threshold =
+            match state.powerups with
+            | Vanilla -> 0.0
+            | Low -> 0.029513
+            | Medium -> 0.058155
+            | High -> 0.112928
+        if threshold = 0.0 || randy.NextDouble () >= threshold then
+            newState.board
+        else
+            let emptySquares =
+                [ for i = 0 to Array2D.length1 newState.board - 1 do for j = 0 to Array2D.length1 newState.board - 1 do yield (i, j) ] 
+                |> List.filter (fun (x, y) -> valid [ AddPiece ((Neutral, Normal), (x, y)) ] newState None = Accept ) //only choose from the coordinates that it's possible to place a piece on
+            if emptySquares <> [] then
+                // pick in a way that favors the center of the board, but if there are 15 iterations without succeeding in placing the piece with the normal distribution around the center
+                // then just pick the next generated coordinate to place the powerup
+                let rec pickCoord coords curStep =
+                    let (x, y) = List.nth coords (randy.Next (List.length coords))
+                    let size = (Array2D.length1 newState.board) / 2
+                    if randy.NextDouble () < normal (float (x - size)) || randy.NextDouble () < normal (float (y - size)) then
+                        (x, y)
+                    elif curStep > 15 then
+                        (x, y)
+                    else
+                        pickCoord coords (curStep + 1)
+                addPieces newState.board [ ((Pickup (powerupChoose randy), Normal), pickCoord emptySquares 0) ]
+            else
+                newState.board
+
+    { seed = newState.seed; black = newState.black; white = newState.white; board = powerupedBoard; powerups = newState.powerups; nextToMove = nextColor }

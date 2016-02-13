@@ -49,6 +49,7 @@
     <Compile Include="Player.fs" />
     <Compile Include="Gameplay.fs" />
     <Compile Include="Game.fs" />
+    <Compile Include="Network.fs" />
     <Compile Include="Window.fs" />
     <Compile Include="Menu.fs" />
     <Compile Include="Program.fs" />
