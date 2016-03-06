@@ -73,15 +73,10 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
         match game.Stage with
         | Play ->
             game.Pass () |> ignore
-            turnDisplay.Text <-
-                match game.NextToMove with
-                | Black ->
-                    "Black"
-                | White ->
-                    "White"
             if game.Stage = Stage.Scoring then
                 turnDisplay.Text <- "Scoring Mode"
                 endGameButton.Text <- "End Game"
+            this.Invalidate ()
         | Scoring ->
             game.MakeMoves curMoves |> ignore
             let (blackScore, whiteScore) = game.CalulateScore ()
@@ -137,19 +132,8 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
             if game.GetMovesNeeded () = List.length moves && game.Stage = Play then
                 match game.MakeMoves moves with
                 | Accept () ->
-                    match game.NextToMove with
-                    | Black ->
-                        turnDisplay.Text <- "Black"
-                    | White ->
-                        turnDisplay.Text <- "White"
-                    match game.GetPlayerPowerup game.NextToMove with
-                    | None ->
-                        powerupDisplay.Text <- "No Powerup"
-                    | Some x ->
-                        powerupDisplay.Text <- String.Format("{0}, {1} moves remaining", x.ToString (), game.GetMovesNeeded () - List.length curMoves)
                     intermediateBoard <- game.Board
                     curMoves <- []
-                    this.Invalidate ()
                 | Reject message ->
                     turnDisplay.Text <- message
             else
@@ -157,9 +141,9 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
                 | Accept (_, intermediateState) ->
                     intermediateBoard <- intermediateState.board
                     curMoves <- moves
-                    this.Invalidate ()
                 | Reject message ->
                     turnDisplay.Text <- message
+            this.Invalidate ()
 
     member this.SignalReceived = signalReceived.Publish
 
@@ -172,6 +156,28 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
             match game.Stage with
             | Play -> String.Format("current player's score: {0}", game.GetScore game.NextToMove)
             | Scoring -> ""
+
+        turnDisplay.Text <-
+            match game.Stage with
+            | Play ->
+                match game.NextToMove with
+                | Black ->
+                    "Black"
+                | White ->
+                    "White"
+            | Scoring ->
+                ""
+
+        powerupDisplay.Text <-
+            match game.Stage with
+            | Play ->
+                match game.GetPlayerPowerup game.NextToMove with
+                | None ->
+                    "No Powerup"
+                | Some x ->
+                    String.Format("{0}, {1} moves remaining", x.ToString (), game.GetMovesNeeded () - List.length curMoves)
+            | Scoring ->
+                ""
 
         let size1 = Array2D.length1 game.Board
         let size2 = Array2D.length2 game.Board
