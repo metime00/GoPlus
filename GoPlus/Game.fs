@@ -126,16 +126,16 @@ type Game (size, genop, powerop, seed) =
                 | White ->
                     state.white.powerup
             match powerupToCheck with
-            | _ when this.Stage = Scoring -> [Move.MarkDead [for i in coords do yield! this.GetGroup i] ]
-            | None -> [ for i in coords do yield (Move.AddPiece ((state.nextToMove, Pieces.Normal), i)) ]
+            | _ when this.Stage = Scoring -> [ Move.MarkDead [for i in coords do yield! this.GetGroup i] ]
+            | None -> [ (Move.AddPiece ((state.nextToMove, Pieces.Normal), List.head coords)) ]
             | Some x ->
                 match x with
                 | Powerup.Big x -> [ Move.AddPiece ((state.nextToMove, Shape.Big x), List.head coords) ]
                 | Powerup.Remove _ -> [ for i in coords do yield (Move.RemovePiece i) ]
                 | Powerup.Multiple _ -> [ for i in coords do yield (Move.AddPiece ((state.nextToMove, Shape.Normal), i)) ]
                 | Powerup.L -> [ for i in coords do yield (Move.AddPiece ((state.nextToMove, Shape.L), i)) ]
-                | Powerup.Conway -> [ ]
-                | Powerup.Shuffle _ ->  [ ]
+                | Powerup.Conway -> [  ]
+                | Powerup.Shuffle x ->  [  ]
         let koState = 
             if prevStates.Count < 3 then
                 None

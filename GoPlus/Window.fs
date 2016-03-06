@@ -19,6 +19,7 @@ open Pieces
 open Board
 open Gameplay
 open Game
+open Util
 open GameOptions
 open Network
 open System
@@ -67,7 +68,17 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
     let undoButton = new Button ()
 
     let undo args =
-        ()
+        match curMoves with
+        | [] ->
+            intermediateBoard <- game.Board
+            this.Invalidate ()
+        | _ ->
+            curMoves <- allBut curMoves
+            match game.CalculateState curMoves with
+            | Accept (_, intermediateState) ->
+                intermediateBoard <- intermediateState.board
+                this.Invalidate ()
+            | _ -> failwith "shouldn't be able to fail by removing a move"
 
     let endGame args =
         match game.Stage with
@@ -134,16 +145,19 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
                 | Accept () ->
                     intermediateBoard <- game.Board
                     curMoves <- []
+                    this.Invalidate ()
                 | Reject message ->
+                    this.Invalidate ()
                     turnDisplay.Text <- message
             else
                 match game.CalculateState moves with
                 | Accept (_, intermediateState) ->
                     intermediateBoard <- intermediateState.board
                     curMoves <- moves
+                    this.Invalidate ()
                 | Reject message ->
+                    this.Invalidate ()
                     turnDisplay.Text <- message
-            this.Invalidate ()
 
     member this.SignalReceived = signalReceived.Publish
 
