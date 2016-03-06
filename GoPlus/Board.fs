@@ -97,7 +97,7 @@ let checkDead lastColor board =
                             match List.tryFind (fun (x, y) -> board.[x,y] <> headCell) enclosing with
                             | Some _ -> false
                             | None -> true
-                        if singleColor && List.length enclosing = 4 then
+                        if singleColor && List.isEmpty (findEmpty (i, j)) then
                             dead.Add (i, j)
                             true |> Array2D.set visited i j
                 | Cell.Taken groupColor when groupColor = lastColor -> ()
