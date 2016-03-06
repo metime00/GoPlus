@@ -61,6 +61,8 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
 
     let mutable squareSize = (scale width) / (gameSize)
 
+    let mutable errorMessage = ""
+
     let scoreDisplay = new Label ()
     let turnDisplay = new Label ()
     let powerupDisplay = new Label ()
@@ -68,12 +70,13 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
     let undoButton = new Button ()
 
     let undo args =
+        curMoves <- allBut curMoves
+        errorMessage <- ""
         match curMoves with
         | [] ->
             intermediateBoard <- game.Board
             this.Invalidate ()
         | _ ->
-            curMoves <- allBut curMoves
             match game.CalculateState curMoves with
             | Accept (_, intermediateState) ->
                 intermediateBoard <- intermediateState.board
@@ -84,6 +87,7 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
         match game.Stage with
         | Play ->
             game.Pass () |> ignore
+            errorMessage <- ""
             if game.Stage = Stage.Scoring then
                 turnDisplay.Text <- "Scoring Mode"
                 endGameButton.Text <- "End Game"
@@ -145,19 +149,18 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
                 | Accept () ->
                     intermediateBoard <- game.Board
                     curMoves <- []
-                    this.Invalidate ()
+                    errorMessage <- ""
                 | Reject message ->
-                    this.Invalidate ()
-                    turnDisplay.Text <- message
+                    errorMessage <- message
             else
                 match game.CalculateState moves with
                 | Accept (_, intermediateState) ->
                     intermediateBoard <- intermediateState.board
                     curMoves <- moves
-                    this.Invalidate ()
+                    errorMessage <- ""
                 | Reject message ->
-                    this.Invalidate ()
-                    turnDisplay.Text <- message
+                    errorMessage <- message
+            this.Invalidate ()
 
     member this.SignalReceived = signalReceived.Publish
 
@@ -185,11 +188,14 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
         powerupDisplay.Text <-
             match game.Stage with
             | Play ->
-                match game.GetPlayerPowerup game.NextToMove with
-                | None ->
-                    "No Powerup"
-                | Some x ->
-                    String.Format("{0}, {1} moves remaining", x.ToString (), game.GetMovesNeeded () - List.length curMoves)
+                match errorMessage with
+                | "" ->
+                    match game.GetPlayerPowerup game.NextToMove with
+                    | None ->
+                        "No Powerup"
+                    | Some x ->
+                        String.Format("{0}, {1} moves remaining", x.ToString (), game.GetMovesNeeded () - List.length curMoves)
+                | x -> x
             | Scoring ->
                 ""
 

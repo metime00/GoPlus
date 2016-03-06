@@ -11,3 +11,4 @@ let rec allBut input =
     match input with
     | head :: tail when tail = [] -> []
     | head :: tail -> head :: allBut tail
+    | [] -> []

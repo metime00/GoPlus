@@ -143,8 +143,6 @@ let rec valid (moves : Move list) state prevState =
                 | Reject message -> Reject message
             let optimal = function
                 | Accept () ->
-                    if x = 1 && y = 2 && fst piece = Color.Neutral then
-                        printf "ahhhhh"
                     let enclosingColor =
                         match state.nextToMove with
                         | Black -> White
