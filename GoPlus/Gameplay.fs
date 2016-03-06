@@ -8,9 +8,10 @@ open Board
 open GameOptions
 open BoardGen
 open Player
+
 /// An error checking type that is returned by all commands to the game
-type ActionResponse =
-    | Accept
+type ActionResponse<'T> =
+    | Accept of 'T
     | Reject of string
 
 /// A type corresponding to any stage of the game. If you're given a state, you have enough info to play a game from that. If you have a list of consecutive states, you have the entire history of a game
@@ -133,27 +134,38 @@ let rec valid (moves : Move list) state prevState =
             let size = Array2D.length1 state.board
             let cells = genCells state.board
             let bounds =
-                if List.filter (fun i -> boundCheck i size size = false) (pieceCoords (snd piece) (x, y)) = [] then Accept
+                if List.filter (fun i -> boundCheck i size size = false) (pieceCoords (snd piece) (x, y)) = [] then Accept ()
                 else Reject "Piece would be out of bounds"
             let existing = function
-                | Accept ->
-                    if List.filter (fun (x, y) -> cells.[x,y] <> Free) (pieceCoords (snd piece) (x, y)) = [] then Accept
+                | Accept () ->
+                    if List.filter (fun (x, y) -> cells.[x,y] <> Free) (pieceCoords (snd piece) (x, y)) = [] then Accept ()
                     else Reject "Piece already exists there"
                 | Reject message -> Reject message
             let optimal = function
-                | Accept ->
-                    let potential = potentialBoard piece state.nextToMove (x, y) state.board
+                | Accept () ->
+                    if x = 1 && y = 2 && fst piece = Color.Neutral then
+                        printf "ahhhhh"
+                    let enclosingColor =
+                        match state.nextToMove with
+                        | Black -> White
+                        | White -> Black
+                    let conditionalColor =
+                        if fst piece = Neutral then
+                            Neutral //if placing a neutral piece for testing, check for dead pieces that are neutral
+                        else
+                            state.nextToMove //only cares about the color who just placed a piece having dead groups
+                    let potential = potentialBoard piece conditionalColor (x, y) state.board
                     let lastColorDead =
                         potential
-                        |> checkDead Neutral // color parameter is neutral because a neutral piece will never be placed
-                        |> List.filter (fun (x, y) -> potential.[x,y] = Cell.Taken state.nextToMove) //only cares about the color who just placed a piece having dead groups
-                    if lastColorDead = [] then Accept
+                        |> checkDead enclosingColor // color parameter is the opposite of the current mover
+                        |> List.filter (fun (x, y) -> potential.[x,y] = Cell.Taken conditionalColor)
+                    if lastColorDead = [] then Accept ()
                     else Reject "Placing a piece there would cause that piece to be dead"
                 | Reject message -> Reject message
             let ko = function //prevState is the last state after the current player moved. AKA not the last state, but the one before it.
-                | Accept ->
+                | Accept () ->
                     match prevState with
-                    | None -> Accept
+                    | None -> Accept ()
                     | Some prevState ->
                         let newBoard = potentialBoard piece state.nextToMove (x, y) state.board
                         let oldBoard = prevState.board |> genCells
@@ -163,7 +175,7 @@ let rec valid (moves : Move list) state prevState =
                                     for j = 0 to size - 1 do
                                         if newBoard.[i,j] <> oldBoard.[i,j] then yield oldBoard.[i,j]
                             ]
-                        if diff <> [] then Accept
+                        if diff <> [] then Accept ()
                         else Reject "Placing that piece would violate the ko rule"
                 | Reject message -> Reject message
             bounds |> existing |> optimal |> ko //does a sequence of checks and returns whether or not a problem occured and where
@@ -176,18 +188,18 @@ let rec valid (moves : Move list) state prevState =
                     | Some (_, shape) -> 
                         match pieceCoords shape (i, j) |> List.tryFind (fun p -> p = (x, y)) with
                         | Option.Some p ->
-                            response <- Accept
+                            response <- Accept ()
                         | Option.None -> ()
                     | None -> ()
             response
         | MarkDead coords ->
-            Accept
+            Accept ()
         | Pass ->
-            Accept
+            Accept ()
     match response with
-    | Accept ->
+    | Accept () ->
         match moves.Tail with
-        | [] -> Accept
+        | [] -> Accept ()
         | tail ->
             valid tail (perform [moves.Head] state) prevState
     | Reject message->
@@ -216,7 +228,7 @@ let apply (moves : Move list) state =
         else
             let emptySquares =
                 [ for i = 0 to Array2D.length1 newState.board - 1 do for j = 0 to Array2D.length1 newState.board - 1 do yield (i, j) ] 
-                |> List.filter (fun (x, y) -> valid [ AddPiece ((Neutral, Normal), (x, y)) ] newState None = Accept ) //only choose from the coordinates that it's possible to place a piece on
+                |> List.filter (fun (x, y) -> valid [ AddPiece ((Neutral, Normal), (x, y)) ] newState None = Accept () ) //only choose from the coordinates that it's possible to place a piece on
             if emptySquares <> [] then
                 // pick in a way that favors the center of the board, but if there are 15 iterations without succeeding in placing the piece with the normal distribution around the center
                 // then just pick the next generated coordinate to place the powerup

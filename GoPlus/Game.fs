@@ -10,6 +10,10 @@ open Board
 open Player
 open Gameplay
 
+type Stage =
+    | Play
+    | Scoring
+
 type Game (size, genop, powerop, seed) =
     let prevStates = new System.Collections.Generic.List<State>()
     let movesMade = new System.Collections.Generic.List<Move list>()
@@ -33,61 +37,11 @@ type Game (size, genop, powerop, seed) =
     /// Returns the game's board for displaying
     member this.Board = state.board
 
-    /// Adds a piece to this location if it's valid, then checks for dead pieces using the given color (for a situation where white is adding a black piece), returning an ActionResponse to signal success or failure
-    member this.AddPiece piece (x, y) =
-        let moves = [(Move.AddPiece (piece, (x, y)))]
-        let koState = 
-            if prevStates.Count < 3 then
-                None
-            else
-                Some (prevStates.Item (prevStates.Count - 1))
-        match valid moves state koState with
-        | Accept -> 
-            state |> apply moves |> updateState
-            movesMade.Add moves
-            Accept
-        | Reject message -> Reject message
-    /// Adds a piece to this location if it's valid, then checks for dead pieces using the given color (for a situation where white is adding a black piece), returning an ActionResponse to signal success or failure
-    member this.AddPieces pieces =
-        let moves = List.map (fun piece -> Move.AddPiece piece) pieces
-        let koState = 
-            if prevStates.Count < 3 then
-                None
-            else
-                Some (prevStates.Item (prevStates.Count - 1))
-        match valid moves state koState with
-        | Accept -> 
-            state |> apply moves |> updateState
-            movesMade.Add moves
-            Accept
-        | Reject message -> Reject message
-
-    /// Removes a piece if it exists at the given location
-    member this.RemovePiece (x, y) =
-        let moves = [(Move.RemovePiece (x, y))]
-        let koState = 
-            if prevStates.Count < 3 then
-                None
-            else
-                Some (prevStates.Item (prevStates.Count - 1))
-        match valid moves state koState with
-        | Accept -> 
-            state |> apply moves |> updateState
-            movesMade.Add moves
-            Accept
-        | Reject message -> Reject message
-
     member this.Pass () =
         let moves = [Move.Pass]
         state |> apply moves |> updateState
         movesMade.Add moves
-        Accept
-
-    member this.MarkDead pieces =
-        let moves = [(Move.MarkDead pieces)]
-        state |> apply moves |> updateState
-        movesMade.Add moves
-        Accept
+        Accept ()
 
     /// calculates total score, assuming all groups are alive, returns the two players' scores as (black, white)
     member this.CalulateScore () =
@@ -117,15 +71,16 @@ type Game (size, genop, powerop, seed) =
                                     printf "omg im neutral"
                                 enclosingColor (List.tail pieces) comparePiece
                             else None
-                    //find the first enclosing color that isn't neutral, since neutral can count for both, but can't get score itself
-                    let colorSample = enclosingPieces |> List.filter (fun (x, y) -> cells.[x, y] <> Cell.Taken Neutral) |> List.head
-                    match enclosingColor enclosingPieces cells.[fst colorSample, snd colorSample] with
-                    | Some (Taken Black) ->
-                        blackScore <- blackScore + (List.length group)
-                    | Some (Taken White) ->
-                        whiteScore <- whiteScore + (List.length group)
-                    | Some (Taken Neutral) -> ()
-                    | None -> ()
+                    if not (List.isEmpty enclosingPieces) then
+                        //find the first enclosing color that isn't neutral, since neutral can count for both, but can't get score itself
+                        let colorSample = enclosingPieces |> List.filter (fun (x, y) -> cells.[x, y] <> Cell.Taken Neutral) |> List.head
+                        match enclosingColor enclosingPieces cells.[fst colorSample, snd colorSample] with
+                        | Some (Taken Black) ->
+                            blackScore <- blackScore + (List.length group)
+                        | Some (Taken White) ->
+                            whiteScore <- whiteScore + (List.length group)
+                        | Some (Taken Neutral) -> ()
+                        | None -> ()
         (float blackScore, (float whiteScore) + 6.5)
     
     /// given a coordinate, returns all the coordinates of the pieces of the group occupying that coordinate, for post game scoring.
@@ -136,7 +91,90 @@ type Game (size, genop, powerop, seed) =
 
     member this.PrevMoves = movesMade
 
+    /// Returns whether or not the game is in scoring mode or playing mode, based on the past moves
+    member this.Stage =
+        let expr =
+            if movesMade.Count < 2 then
+                false
+            else
+                movesMade.Item (movesMade.Count - 1) = [ Move.Pass ] //last two moves were a pass
+                && movesMade.Item (movesMade.Count - 2) = [ Move.Pass ]
+        match expr with
+        | false -> Stage.Play
+        | true -> Stage.Scoring
+
+    member this.NextToMove =
+        state.nextToMove
+
     member this.GetScore color =
         match color with
         | Pieces.Color.Black -> state.black.score
         | Pieces.Color.White -> state.white.score
+
+    member this.GetPlayerPowerup color =
+        match color with
+        | Pieces.Color.Black -> state.black.powerup
+        | Pieces.Color.White -> state.white.powerup
+
+    /// Returns the next state as an ActionRespones<State> given a list of clicked coordinates, but does not update the game state
+    member this.CalculateState (coords : (int * int) list) =
+        let moves = 
+            let powerupToCheck =
+                match state.nextToMove with
+                | Black ->
+                    state.black.powerup
+                | White ->
+                    state.white.powerup
+            match powerupToCheck with
+            | _ when this.Stage = Scoring -> [Move.MarkDead [for i in coords do yield! this.GetGroup i] ]
+            | None -> [ for i in coords do yield (Move.AddPiece ((state.nextToMove, Pieces.Normal), i)) ]
+            | Some x ->
+                match x with
+                | Powerup.Big x -> [ Move.AddPiece ((state.nextToMove, Shape.Big x), List.head coords) ]
+                | Powerup.Remove _ -> [ for i in coords do yield (Move.RemovePiece i) ]
+                | Powerup.Multiple _ -> [ for i in coords do yield (Move.AddPiece ((state.nextToMove, Shape.Normal), i)) ]
+                | Powerup.L -> [ for i in coords do yield (Move.AddPiece ((state.nextToMove, Shape.L), i)) ]
+                | Powerup.Conway -> [ ]
+                | Powerup.Shuffle _ ->  [ ]
+        let koState = 
+            if prevStates.Count < 3 then
+                None
+            else
+                Some (prevStates.Item (prevStates.Count - 1))
+        match valid moves state koState with
+        | Accept () ->
+            Accept (moves, state |> perform moves)
+        | Reject message -> Reject message
+
+    /// Given a list of clicked move coordinates, figures out what move is next to make, and uses those coordinates as the input
+    /// Updates the state, or returns an error message if the move coordinates are incompatible with the next move to make
+    member this.MakeMoves moveCoords =
+        match this.CalculateState moveCoords with
+        | Accept (moves, _) ->
+            state |> apply moves |> updateState
+            movesMade.Add moves
+            Accept ()
+        | Reject message ->
+            Reject message
+
+    /// Tells the UI how many moves are needed to be passed to it before it has enough to update the game one whole state.
+    /// Calculates this based on whether or not the next to move player has a powerup or not, and which kind
+    member this.GetMovesNeeded () =
+        //if the last two moves were passes, then the next move to play is a markdead move.
+        //If the player has a powerup, the next move to play is that powerup, etc.
+        let powerupToCheck =
+            match state.nextToMove with
+            | Black ->
+                state.black.powerup
+            | White ->
+                state.white.powerup
+        match powerupToCheck with
+        | None -> 1
+        | Some x ->
+            match x with
+            | Powerup.Big _ -> 1
+            | Powerup.Remove (num) -> num
+            | Powerup.Multiple (num, _) -> num
+            | Powerup.L -> 1
+            | Powerup.Conway -> 1
+            | Powerup.Shuffle _ -> 1

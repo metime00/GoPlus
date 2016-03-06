@@ -4,6 +4,10 @@ open Gameplay
 open System
 open System.Net.Sockets
 
+//networking works by one client sending an int of the number of coordinates being sent, or that a pass is being played, then the coordinates of the moves
+//if the number of moves being sent is inconsistent with what the receiving client expects, or the moves provided are invalid, 
+//the receiving client calls out the sending client as either a cheater or bugged
+
 /// encodes a list of moves as an array of bytes for sending to the other player
 let encode moves =
     [|
