@@ -5,6 +5,7 @@
 open Util
 open Pieces
 open Board
+open Powerup
 open GameOptions
 open BoardGen
 open Player
@@ -29,6 +30,8 @@ type Move =
     | RemovePiece of (int * int)
     | MarkDead of (int * int) list
     | Pass
+    | Conway
+    | Shuffle of int
 
 /// Returns the cells of a potential board after a piece is placed
 let potentialBoard piece color (x, y) board =
@@ -57,7 +60,8 @@ let rec perform (moves : Move list) state =
     let nextState =
         match moves.Head with
         | AddPiece (piece, (x, y)) ->
-            let temp = addPieces state.board [ (piece, (x, y)) ]
+            let temp = 
+                addPieces state.board [ (piece, (x, y)) ]
             let numDead =
                 temp
                 |> genCells
@@ -77,27 +81,31 @@ let rec perform (moves : Move list) state =
                 | None -> None
             let newBlack = 
                 if state.nextToMove = Color.Black then
+                    //if they have a powerup and didn't capture one, then their powerup next state is the one they had last intermediate state
+                    let newPowerup =
+                        if newPowerup = None then
+                            state.black.powerup
+                        else
+                            newPowerup
                     { color = Color.Black; score = state.black.score + addedScore; powerup = newPowerup }
                 else
                     state.black
             let newWhite = 
                 if state.nextToMove = Color.White then
+                    let newPowerup =
+                        if newPowerup = None then
+                            state.white.powerup
+                        else
+                            newPowerup
                     { color = Color.White; score = state.white.score + addedScore; powerup = newPowerup }
                 else
                     state.white
             { seed = state.seed; black = newBlack; white = newWhite; board = newBoard; powerups = state.powerups; nextToMove = state.nextToMove }
         | RemovePiece (x, y) ->
-            let size = Array2D.length1 state.board
-            let mutable newBoard = None
-            for i = 0 to size - 1 do
-                for j = 0 to size - 1 do
-                    match state.board.[i,j] with
-                    | Some (_, shape) -> 
-                        match pieceCoords shape (i, j) |> List.tryFind (fun p -> p = (x, y)) with
-                        | Option.Some p ->
-                            newBoard <- Some (removePieces state.board [ (i, j) ])
-                        | Option.None -> ()
-                    | None -> ()
+            let newBoard =
+                match intersectingPieces [ (x, y) ] state.board with
+                | [] -> None
+                | piece -> Some (removePieces state.board piece)
             match newBoard with
             | None -> 
                 failwith "No piece at given location"
@@ -138,8 +146,11 @@ let rec valid (moves : Move list) state prevState =
                 else Reject "Piece would be out of bounds"
             let existing = function
                 | Accept () ->
-                    if List.filter (fun (x, y) -> cells.[x,y] <> Free) (pieceCoords (snd piece) (x, y)) = [] then Accept ()
-                    else Reject "Piece already exists there"
+                    match snd piece with
+                    | Big _ -> Accept () //big pieces remove any piece in their way
+                    | _ ->
+                        if List.filter (fun (x, y) -> cells.[x,y] <> Free) (pieceCoords (snd piece) (x, y)) = [] then Accept ()
+                        else Reject "Piece already exists there"
                 | Reject message -> Reject message
             let optimal = function
                 | Accept () ->
@@ -152,7 +163,17 @@ let rec valid (moves : Move list) state prevState =
                             Neutral //if placing a neutral piece for testing, check for dead pieces that are neutral
                         else
                             state.nextToMove //only cares about the color who just placed a piece having dead groups
-                    let potential = potentialBoard piece conditionalColor (x, y) state.board
+                    let potential = 
+                        match snd piece with
+                        | Big (xSize, ySize) ->
+                            //cleared board is one where the pieces that would be under the big piece are removed prior to placing it
+                            let cleared = 
+                                let clearCoords = pieceCoords (Big (xSize, ySize)) (x, y)
+                                let clearedPieces = intersectingPieces clearCoords state.board
+                                removePieces state.board clearedPieces
+                            potentialBoard piece conditionalColor (x, y) cleared
+                        | _ ->
+                            potentialBoard piece conditionalColor (x, y) state.board
                     let lastColorDead =
                         potential
                         |> checkDead enclosingColor // color parameter is the opposite of the current mover
@@ -178,18 +199,11 @@ let rec valid (moves : Move list) state prevState =
                 | Reject message -> Reject message
             bounds |> existing |> optimal |> ko //does a sequence of checks and returns whether or not a problem occured and where
         | RemovePiece (x, y) ->
-            let size = Array2D.length1 state.board
-            let mutable response = Reject "No piece at given location"
-            for i = 0 to size - 1 do
-                for j = 0 to size - 1 do
-                    match state.board.[i,j] with
-                    | Some (_, shape) -> 
-                        match pieceCoords shape (i, j) |> List.tryFind (fun p -> p = (x, y)) with
-                        | Option.Some p ->
-                            response <- Accept ()
-                        | Option.None -> ()
-                    | None -> ()
-            response
+            match intersectingPieces [ (x, y) ] state.board with
+            | [] -> 
+                Reject "No piece at given location"
+            | piece -> 
+                Accept ()
         | MarkDead coords ->
             Accept ()
         | Pass ->
@@ -205,7 +219,17 @@ let rec valid (moves : Move list) state prevState =
 
 let apply (moves : Move list) state =
     printfn "%A" moves
-    let newState = perform moves state
+    //clear the powerup from the next player to move so that they can hold the next one they capture
+    let powerupLessState =
+        match state.nextToMove with
+        | Black ->
+            let newBlack = { color = state.black.color; score = state.black.score; powerup = None }
+            { seed = state.seed; black = newBlack; white = state.white; board = state.board; powerups = state.powerups; nextToMove = state.nextToMove }
+        | White ->
+            let newWhite = { color = state.black.color; score = state.black.score; powerup = None }
+            { seed = state.seed; black = state.black; white = newWhite; board = state.board; powerups = state.powerups; nextToMove = state.nextToMove }
+            
+    let newState = perform moves powerupLessState
     let nextColor =
         match state.nextToMove with
         | Black -> Color.White

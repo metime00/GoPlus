@@ -18,6 +18,21 @@ let pieceCoords shape (x, y) =
     | L ->
         [ (x, y); (x - 1, y); (x - 2, y); (x, y + 1) ]
 
+/// Returns a list of coordinates of pieces that intersect with the given coordinates
+let intersectingPieces coords board =
+    let size = Array2D.length1 board
+    [
+        for i = 0 to size - 1 do
+            for j = 0 to size - 1 do
+                match board.[i,j] with
+                | Some (_, shape) -> 
+                    match pieceCoords shape (i, j) |> List.exists (fun p -> List.exists (fun q -> q = p) coords ) with
+                    | true ->
+                        yield (i, j)
+                    | false -> ()
+                | None -> ()    
+    ]
+
 /// Returns a list of all pieces in the group at the given coordinates
 let genGroup (x, y) (board : Cell[,]) =
     let size = Array2D.length1 board

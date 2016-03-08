@@ -1,18 +1,10 @@
 ﻿module Window
 // TODO
-// 0. make powerups actually be used and make them have to be used the turn following a player getting them
-// 1. move all game state and current player and move choosing to Game and make Window interact with game only through game.interact and game.pass methods
-// game will return an ActionResponse telling Window whether or not the other player is sending bad info or if the current user needs to try their move again
-// game will have a method or property to tell Window how many (x, y) coords it needs, then window will collect the user input coords to deliver into the game
-// 2. there will be a problem with user feedback for multiple move powerups. The user wants to be able to see the effects after every piece placed if they get to place 3 pieces,
-// but the way moves are applied would only do them all at once. Make it so the Window can display intermediate states.
 
-// keep the game stage state in window, it's too messy for the Game class. Maybe make state just be a check if the last two moves were passes
+// 1. finish the conway and shuffle powerups
 
-// Way to do this: game object has a function that returns an intermediate state given an incomplete list of move coordinates,
-// the window stores clicks as a list of coordinates, updating the visuals of the board after each click with the returned intermediate board state
-// once the window has enough coordinates as the game wants next, it will pass in those coords to a game.MakeMove method,
-// where the game will apply the coordinates according to what sort of move the next move is based on the current state
+// 2. make big pieces crush any piece in their way (remove any piece that intersects with them)
+
 // 3. make graphics be images
 
 open Pieces

@@ -47,6 +47,7 @@
     <Compile Include="Board.fs" />
     <Compile Include="BoardGen.fs" />
     <Compile Include="Player.fs" />
+    <Compile Include="Powerup.fs" />
     <Compile Include="Gameplay.fs" />
     <Compile Include="Game.fs" />
     <Compile Include="Network.fs" />
