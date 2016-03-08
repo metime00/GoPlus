@@ -5,16 +5,6 @@ open Board
 open GameOptions
 open Util
 
-let powerupChoose (rando : System.Random) =
-    let randNum = rando.NextDouble ()
-    match randNum with
-    | _ when randNum > 0.80 -> Powerup.L
-    | _ when randNum > 0.65 -> Powerup.Big (1, 1)
-    | _ when randNum > 0.45 -> Powerup.Multiple ((rando.Next (2, 5)), true)
-    | _ when randNum > 0.40 -> Powerup.Multiple ((rando.Next (1, 4)), false)
-    | _ when randNum > 0.15 -> Powerup.Shuffle (rando.Next (1, 11))
-    | _ -> Powerup.Conway
-
 let generate seed genop powerop size =
     let randy = new System.Random (seed)
     let output = board size

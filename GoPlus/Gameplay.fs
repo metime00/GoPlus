@@ -61,7 +61,16 @@ let rec perform (moves : Move list) state =
         match moves.Head with
         | AddPiece (piece, (x, y)) ->
             let temp = 
-                addPieces state.board [ (piece, (x, y)) ]
+                match snd piece with
+                        | Big (xSize, ySize) ->
+                            //cleared board is one where the pieces that would be under the big piece are removed prior to placing it
+                            let cleared = 
+                                let clearCoords = pieceCoords (Big (xSize, ySize)) (x, y)
+                                let clearedPieces = intersectingPieces clearCoords state.board
+                                removePieces state.board clearedPieces
+                            addPieces cleared [ (piece, (x, y)) ]
+                        | _ ->
+                            addPieces state.board [ (piece, (x, y)) ]
             let numDead =
                 temp
                 |> genCells
@@ -252,14 +261,14 @@ let apply (moves : Move list) state =
                 [ for i = 0 to Array2D.length1 newState.board - 1 do for j = 0 to Array2D.length1 newState.board - 1 do yield (i, j) ] 
                 |> List.filter (fun (x, y) -> valid [ AddPiece ((Neutral, Normal), (x, y)) ] newState None = Accept () ) //only choose from the coordinates that it's possible to place a piece on
             if emptySquares <> [] then
-                // pick in a way that favors the center of the board, but if there are 15 iterations without succeeding in placing the piece with the normal distribution around the center
+                // pick in a way that favors the center of the board, but if there are 3 iterations without succeeding in placing the piece with the normal distribution around the center
                 // then just pick the next generated coordinate to place the powerup
                 let rec pickCoord coords curStep =
                     let (x, y) = List.nth coords (randy.Next (List.length coords))
                     let size = (Array2D.length1 newState.board) / 2
                     if randy.NextDouble () < normal (float (x - size)) || randy.NextDouble () < normal (float (y - size)) then
                         (x, y)
-                    elif curStep > 15 then
+                    elif curStep > 3 then
                         (x, y)
                     else
                         pickCoord coords (curStep + 1)
