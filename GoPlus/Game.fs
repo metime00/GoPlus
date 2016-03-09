@@ -134,8 +134,8 @@ type Game (size, genop, powerop, seed) =
                 | Powerup.Remove _ -> [ for i in coords do yield (Move.RemovePiece i) ]
                 | Powerup.Multiple _ -> [ for i in coords do yield (Move.AddPiece ((state.nextToMove, Shape.Normal), i)) ]
                 | Powerup.L -> [ for i in coords do yield (Move.AddPiece ((state.nextToMove, Shape.L), i)) ]
-                | Powerup.Conway -> [  ]
-                | Powerup.Shuffle x ->  [  ]
+                | Powerup.Conway -> [ Move.Conway ]
+                | Powerup.Shuffle x ->  [ Move.Shuffle x ]
         let koState = 
             if prevStates.Count < 3 then
                 None

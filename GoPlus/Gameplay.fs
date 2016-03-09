@@ -140,6 +140,12 @@ let rec perform (moves : Move list) state =
             let newBlack = { color = Color.Black; score = state.black.score + blackScoreDelta; powerup = state.black.powerup }
             let newWhite = { color = Color.White; score = state.white.score + whiteScoreDelta; powerup = state.white.powerup }
             { seed = state.seed; black = newBlack; white = newWhite; board = newBoard; powerups = state.powerups; nextToMove = Color.Neutral }
+        | Conway ->
+            //simulate a round of conway's game of life
+            { seed = state.seed; black = state.black; white = state.white; board = conway state.board; powerups = state.powerups; nextToMove = state.nextToMove }
+        | Shuffle percent ->
+            //shuffle x percent of pieces
+            { seed = state.seed; black = state.black; white = state.white; board = shuffle percent state.board state.seed; powerups = state.powerups; nextToMove = state.nextToMove }
     match moves.Tail with
     | [] -> nextState
     | tail -> perform moves.Tail nextState
@@ -216,6 +222,10 @@ let rec valid (moves : Move list) state prevState =
         | MarkDead coords ->
             Accept ()
         | Pass ->
+            Accept ()
+        | Conway ->
+            Accept ()
+        | Shuffle _ ->
             Accept ()
     match response with
     | Accept () ->
