@@ -157,10 +157,13 @@ type Game (size, genop, powerop, seed) =
     /// Given a list of clicked move coordinates, figures out what move is next to make, and uses those coordinates as the input
     /// Updates the state, or returns an error message if the move coordinates are incompatible with the next move to make
     member this.MakeMoves moveCoords =
+        let timey = System.Diagnostics.Stopwatch.StartNew ()
         match this.CalculateState moveCoords with
         | Accept (moves, _) ->
             state |> apply moves |> updateState
             movesMade.Add moves
+            timey.Stop ()
+            printfn "took %i ms to complete move" timey.ElapsedMilliseconds
             Accept ()
         | Reject message ->
             Reject message

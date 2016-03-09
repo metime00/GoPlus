@@ -141,11 +141,29 @@ let rec perform (moves : Move list) state =
             let newWhite = { color = Color.White; score = state.white.score + whiteScoreDelta; powerup = state.white.powerup }
             { seed = state.seed; black = newBlack; white = newWhite; board = newBoard; powerups = state.powerups; nextToMove = Color.Neutral }
         | Conway ->
+            let temp = conway state.board
+            let numDead =
+                temp
+                |> genCells
+                |> checkDead state.nextToMove
+            let newBoard =
+                numDead
+                |> List.filter (fun (x, y) -> state.board.[x,y] <> None)
+                |> removePieces temp //remove dead pieces if they exist from the round of conway
             //simulate a round of conway's game of life
-            { seed = state.seed; black = state.black; white = state.white; board = conway state.board; powerups = state.powerups; nextToMove = state.nextToMove }
+            { seed = state.seed; black = state.black; white = state.white; board = newBoard; powerups = state.powerups; nextToMove = state.nextToMove }
         | Shuffle percent ->
+            let temp = shuffle percent state.board state.seed
+            let numDead =
+                temp
+                |> genCells
+                |> checkDead state.nextToMove
+            let newBoard =
+                numDead
+                |> List.filter (fun (x, y) -> state.board.[x,y] <> None)
+                |> removePieces temp //remove the dead pieces from the shuffle
             //shuffle x percent of pieces
-            { seed = state.seed; black = state.black; white = state.white; board = shuffle percent state.board state.seed; powerups = state.powerups; nextToMove = state.nextToMove }
+            { seed = state.seed; black = state.black; white = state.white; board = newBoard; powerups = state.powerups; nextToMove = state.nextToMove }
     match moves.Tail with
     | [] -> nextState
     | tail -> perform moves.Tail nextState
@@ -240,13 +258,17 @@ let apply (moves : Move list) state =
     printfn "%A" moves
     //clear the powerup from the next player to move so that they can hold the next one they capture
     let powerupLessState =
-        match state.nextToMove with
-        | Black ->
-            let newBlack = { color = state.black.color; score = state.black.score; powerup = None }
-            { seed = state.seed; black = newBlack; white = state.white; board = state.board; powerups = state.powerups; nextToMove = state.nextToMove }
-        | White ->
-            let newWhite = { color = state.black.color; score = state.black.score; powerup = None }
-            { seed = state.seed; black = state.black; white = newWhite; board = state.board; powerups = state.powerups; nextToMove = state.nextToMove }
+        match moves with
+        | [ Move.Pass ] ->
+            state
+        | _ ->
+            match state.nextToMove with
+            | Black ->
+                let newBlack = { color = state.black.color; score = state.black.score; powerup = None }
+                { seed = state.seed; black = newBlack; white = state.white; board = state.board; powerups = state.powerups; nextToMove = state.nextToMove }
+            | White ->
+                let newWhite = { color = state.black.color; score = state.black.score; powerup = None }
+                { seed = state.seed; black = state.black; white = newWhite; board = state.board; powerups = state.powerups; nextToMove = state.nextToMove }
             
     let newState = perform moves powerupLessState
     let nextColor =
@@ -258,21 +280,26 @@ let apply (moves : Move list) state =
     //do random powerup generation, using the propogated seed
     let randy = new System.Random (genHash state.seed state.board)
     let powerupedBoard =
-        let threshold =
-            match state.powerups with
-            | Vanilla -> 0.0
-            | Low -> 0.029513
-            | Medium -> 0.058155
-            | High -> 0.112928
-        if threshold = 0.0 || randy.NextDouble () >= threshold then
-            newState.board
-        else
-            let emptySquares =
-                [ for i = 0 to Array2D.length1 newState.board - 1 do for j = 0 to Array2D.length1 newState.board - 1 do yield (i, j) ] 
-                |> List.filter (fun (x, y) -> valid [ AddPiece ((Neutral, Normal), (x, y)) ] newState None = Accept () ) //only choose from the coordinates that it's possible to place a piece on
-            if emptySquares <> [] then
-                addPieces newState.board [ ((Pickup (powerupChoose randy), Normal), List.nth emptySquares (randy.Next (List.length emptySquares))) ]
-            else
+        match moves with
+        | Move.MarkDead _ :: [] -> newState.board
+        | _ ->
+            let threshold =
+                match state.powerups with
+                | Vanilla -> 0.0
+                | Low -> 0.029513
+                | Medium -> 0.058155
+                | High -> 0.112928
+                | Guaranteed -> 1.0
+            if threshold = 0.0 || randy.NextDouble () >= threshold then
                 newState.board
+            else
+                let emptySquares =
+                    [ for i = 0 to Array2D.length1 newState.board - 1 do for j = 0 to Array2D.length1 newState.board - 1 do yield (i, j) ] 
+                    |> List.filter (fun (x, y) -> valid [ AddPiece ((Neutral, Normal), (x, y)) ] newState None = Accept () ) //only choose from the coordinates that it's possible to place a piece on
+                    |> List.filter (fun (x, y) -> findTakenAdjacent (x, y) (genCells state.board) = [] || checkDead state.nextToMove (genCells (addPieces newState.board [((Neutral, Normal), (x, y))]) ) = [])
+                if emptySquares <> [] then
+                    addPieces newState.board [ ((Pickup (powerupChoose randy), Normal), List.nth emptySquares (randy.Next (List.length emptySquares))) ]
+                else
+                    newState.board
 
     { seed = newState.seed; black = newState.black; white = newState.white; board = powerupedBoard; powerups = newState.powerups; nextToMove = nextColor }

@@ -1,9 +1,13 @@
 ﻿module Window
 // TODO
 
-// 1. finish the conway and shuffle powerups
+// -1. optimize powerup placement code. It takes over 10x as long as normal play
 
-// 2. make big pieces crush any piece in their way (remove any piece that intersects with them)
+// 1. make tooltip showing what a powerup is when you hover mouse over it
+// make a general display label that shows the tooltip and the turn feedback, instead of writing over the powerup label
+
+// 2. make default option be guaranteed powerup every x turns, and which turn in that range is random,
+// as opposed to a random chance every turn
 
 // 3. make graphics be images
 
@@ -204,7 +208,8 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
             | Play ->
                 let x = mouseX / squareSize
                 let y = mouseY / squareSize
-                args.Graphics.FillEllipse(transparentBrushFromColor(game.NextToMove), x * squareSize, y * squareSize, squareSize, squareSize) 
+                if boundCheck (x, y) size1 size2 then
+                    args.Graphics.FillEllipse(transparentBrushFromColor(game.NextToMove), x * squareSize, y * squareSize, squareSize, squareSize) 
             | Scoring -> ()
 
         for i = 0 to size1 - 1 do

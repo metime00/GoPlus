@@ -65,6 +65,7 @@ type Menu (width, height) as this =
             | "Low" -> Low
             | "Medium" -> Medium
             | "High" -> High
+            | "Guaranteed" -> Guaranteed
             | _ -> failwith "radio button had text that isn't supported"
         let steve = new Window (gameSize, { NeutralGen = neutralCheck.Checked }, powerOp, 640, 480, client)
         steve.Show ()

@@ -18,6 +18,13 @@ let pieceCoords shape (x, y) =
     | L ->
         [ (x, y); (x - 1, y); (x - 2, y); (x, y + 1) ]
 
+/// Returns a list of taken and adjacent cells to the given coordinates
+let findTakenAdjacent (x, y) cells =
+    let size = Array2D.length1 cells
+    [(x - 1, y); (x + 1, y); (x, y - 1); (x, y + 1)]
+    |> List.filter (fun (x, y) -> boundCheck (x, y) (size) (size))
+    |> List.filter (fun (x, y) -> cells.[x,y] <> Cell.Free)
+
 /// Returns a list of coordinates of pieces that intersect with the given coordinates
 let intersectingPieces coords board =
     let size = Array2D.length1 board
@@ -82,7 +89,7 @@ let addPieces (board : Option<Piece>[,]) pieces =
     List.iter (fun (piece, (x, y)) -> Array2D.set output x y (Some piece)) pieces
     output
 
-/// Takes a board of cells and returns a list of dead cells, with the second argument being the color of the piece that was placed last, that does not get their liberties checked
+/// Takes a board of cells and returns a list of dead cells, with the first argument being the color of the piece that was placed last, that does not get their liberties checked
 let checkDead lastColor board =
     /// Running total of dead cells
     let dead = new System.Collections.Generic.List<(int * int)>()
