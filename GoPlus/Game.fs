@@ -132,7 +132,15 @@ type Game (size, genop, powerop, seed) =
                 match x with
                 | Powerup.Big x -> [ Move.AddPiece ((state.nextToMove, Shape.Big x), List.head coords) ]
                 | Powerup.Remove _ -> [ for i in coords do yield (Move.RemovePiece i) ]
-                | Powerup.Multiple _ -> [ for i in coords do yield (Move.AddPiece ((state.nextToMove, Shape.Normal), i)) ]
+                | Powerup.Multiple (_, colorBool) -> 
+                    let col =
+                        match state.nextToMove with
+                        | Black when colorBool -> Black
+                        | Black when not colorBool -> White
+                        | White when colorBool -> White
+                        | White when not colorBool -> Black
+                        | _ -> failwith "should only have black and white as the colors to move"
+                    [ for i in coords do yield (Move.AddPiece ((col, Shape.Normal), i)) ]
                 | Powerup.L -> [ for i in coords do yield (Move.AddPiece ((state.nextToMove, Shape.L), i)) ]
                 | Powerup.Conway -> [ Move.Conway ]
                 | Powerup.Shuffle x ->  [ Move.Shuffle x ]

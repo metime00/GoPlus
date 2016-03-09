@@ -271,18 +271,7 @@ let apply (moves : Move list) state =
                 [ for i = 0 to Array2D.length1 newState.board - 1 do for j = 0 to Array2D.length1 newState.board - 1 do yield (i, j) ] 
                 |> List.filter (fun (x, y) -> valid [ AddPiece ((Neutral, Normal), (x, y)) ] newState None = Accept () ) //only choose from the coordinates that it's possible to place a piece on
             if emptySquares <> [] then
-                // pick in a way that favors the center of the board, but if there are 3 iterations without succeeding in placing the piece with the normal distribution around the center
-                // then just pick the next generated coordinate to place the powerup
-                let rec pickCoord coords curStep =
-                    let (x, y) = List.nth coords (randy.Next (List.length coords))
-                    let size = (Array2D.length1 newState.board) / 2
-                    if randy.NextDouble () < normal (float (x - size)) || randy.NextDouble () < normal (float (y - size)) then
-                        (x, y)
-                    elif curStep > 3 then
-                        (x, y)
-                    else
-                        pickCoord coords (curStep + 1)
-                addPieces newState.board [ ((Pickup (powerupChoose randy), Normal), pickCoord emptySquares 0) ]
+                addPieces newState.board [ ((Pickup (powerupChoose randy), Normal), List.nth emptySquares (randy.Next (List.length emptySquares))) ]
             else
                 newState.board
 

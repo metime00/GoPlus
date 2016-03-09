@@ -14,6 +14,21 @@ let powerupChoose (rando : System.Random) =
     | _ when randNum > 0.15 -> Powerup.Shuffle (rando.Next (5, 21))
     | _ -> Powerup.Conway
 
+let powerupString powerup nextToMove =
+    match powerup with
+    | Powerup.Big (x, y) -> System.String.Format ("Place a {0}x{1} piece", x*2+1, y*2+1)
+    | Powerup.Conway -> "Simulate a step of Conway's Game of Life"
+    | Powerup.L -> "Place an L piece"
+    | Powerup.Shuffle x -> System.String.Format ("Shuffle {0}% of pieces", x)
+    | Powerup.Multiple (x, colorBool) ->
+        match nextToMove with
+        | Black when colorBool -> "Place multiple black pieces"
+        | Black when not colorBool -> "Place multiple white pieces"
+        | White when colorBool -> "Place multiple white pieces"
+        | White when not colorBool -> "Place multiple black pieces"
+        | _ -> failwith "should only have black and white as the colors to move"
+    | Powerup.Remove x -> "Remove pieces"
+
 /// Simulates one tick of Conway's Game of Life for multiple color cells. Converts all special pieces into normal sized pieces
 let conway board =
     let size = Array2D.length1 board

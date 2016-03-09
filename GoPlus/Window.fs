@@ -186,7 +186,7 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
                     | None ->
                         "No Powerup"
                     | Some x ->
-                        String.Format("{0}, {1} moves remaining", x.ToString (), game.GetMovesNeeded () - List.length curMoves)
+                        String.Format("{0}, {1} moves remaining", Powerup.powerupString x game.NextToMove, game.GetMovesNeeded () - List.length curMoves)
                 | x -> x
             | Scoring ->
                 ""
