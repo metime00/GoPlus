@@ -59,7 +59,7 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BoardActions.fs" />
+    <Compile Include="Tests.fs" />
     <None Include="App.config" />
     <None Include="MSTest.runsettings" />
   </ItemGroup>
