@@ -122,9 +122,10 @@ let rec perform (moves : Move list) state =
                 { seed = state.seed; black = state.black; white = state.white; board = newBoard; powerups = state.powerups; nextToMove = state.nextToMove }
         | Pass ->
             { seed = state.seed; black = state.black; white = state.white; board = state.board; powerups = state.powerups; nextToMove = state.nextToMove }
-        | MarkDead pieces ->
+        | MarkDead groupCoords ->
             let mutable blackScoreDelta = 0
             let mutable whiteScoreDelta = 0
+            let pieces = [ for i in groupCoords do yield! genGroup i (genCells state.board) ]
             for (x, y) in pieces do
                 let (color, shape) =
                     match state.board.[x,y] with
@@ -238,7 +239,15 @@ let rec valid (moves : Move list) state prevState =
             | piece -> 
                 Accept ()
         | MarkDead coords ->
-            Accept ()
+            let deadGroups = coords |> List.map (fun x -> (genGroup x  (genCells state.board)) |> List.filter (fun (x, y) -> state.board.[x, y] <> None))
+            if List.exists (fun x -> x = []) deadGroups then
+                Reject "Marking a group dead where there is no group"
+            else
+                let deadCoords = [ for i in deadGroups do yield! i ]
+                if List.length deadCoords <> (deadCoords |> Set.ofList |> Set.count) then
+                    Reject "Cannot mark a group dead more than once"
+                else
+                Accept ()
         | Pass ->
             Accept ()
         | Conway ->

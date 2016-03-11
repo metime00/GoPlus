@@ -24,6 +24,5 @@ let display board =
 let windowStart argv =
     let menu = new Menu (640, 480)
     menu.Show ()
-    while Application.OpenForms.Count <> 0 do
-        Application.DoEvents ()
+    Application.Run ()
     0

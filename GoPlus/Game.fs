@@ -126,7 +126,7 @@ type Game (size, genop, powerop, seed) =
                 | White ->
                     state.white.powerup
             match powerupToCheck with
-            | _ when this.Stage = Scoring -> [ Move.MarkDead [for i in coords do yield! this.GetGroup i] ]
+            | _ when this.Stage = Scoring -> [ Move.MarkDead coords ]
             | None -> [ (Move.AddPiece ((state.nextToMove, Pieces.Normal), List.head coords)) ]
             | Some x ->
                 match x with

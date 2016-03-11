@@ -3,6 +3,9 @@
 
 // -1. optimize powerup placement code. It takes over 10x as long as normal play
 
+// BUGFIX: 0. make valid function check if there are any coordinates that mark duplicate groups dead, aka mark group dead at 0, 0 twice should be rejected.
+// this prevents getting extra score and having redundant move lists
+
 // 1. make tooltip showing what a powerup is when you hover mouse over it
 // make a general display label that shows the tooltip and the turn feedback, instead of writing over the powerup label
 
@@ -39,7 +42,7 @@ let transparentBrushFromColor color =
     |  Pieces.Color.Black -> transparentBlack :> Brush
     |  Pieces.Color.White -> transparentWhite :> Brush
 
-type Window (gameSize, gen, powerop, width, height, client) as this =
+type Window (gameSize, gen, powerop, width, height, client, seed) as this =
     inherit Form ()
 
     ///scales a given coordinate by a certain amount and returns it as an int
@@ -50,7 +53,7 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
     /// the collection of coordinates of tentative moves
     let mutable curMoves : (int * int) list = [ ]
 
-    let game = new Game (gameSize, gen, powerop, (new Random ()).Next ())
+    let game = new Game (gameSize, gen, powerop, seed)
 
     /// Board for displaying, should be updated every click
     let mutable intermediateBoard = game.Board
@@ -122,6 +125,9 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
         endGameButton.Click.Add endGame
         this.Controls.AddRange [| scoreDisplay; turnDisplay; powerupDisplay; endGameButton; undoButton |]
 
+    override this.OnClosed args =
+        Application.Exit ()
+
     // Window will handle timer and whose turn it is, it will translate ui actions into function calls on Game.
     // It decides when things happen, Game implements them
     override this.OnMouseMove args =
@@ -182,18 +188,18 @@ type Window (gameSize, gen, powerop, width, height, client) as this =
                 ""
 
         powerupDisplay.Text <-
-            match game.Stage with
-            | Play ->
-                match errorMessage with
-                | "" ->
+            match errorMessage with
+            | "" ->
+                match game.Stage with
+                | Play ->
                     match game.GetPlayerPowerup game.NextToMove with
                     | None ->
                         "No Powerup"
                     | Some x ->
                         String.Format("{0}, {1} moves remaining", Powerup.powerupString x game.NextToMove, game.GetMovesNeeded () - List.length curMoves)
-                | x -> x
-            | Scoring ->
-                ""
+                | Scoring ->
+                    ""
+            | x -> x
 
         let size1 = Array2D.length1 game.Board
         let size2 = Array2D.length2 game.Board

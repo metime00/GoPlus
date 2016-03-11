@@ -1,6 +1,7 @@
 ﻿module Network
 
 open Gameplay
+open GameOptions
 open Pieces
 open System
 open System.Net.Sockets
@@ -8,6 +9,41 @@ open System.Net.Sockets
 //networking works by one client sending an int of the number of coordinates being sent, or that a pass is being played, then the coordinates of the moves
 //if the number of moves being sent is inconsistent with what the receiving client expects, or the moves provided are invalid, 
 //the receiving client calls out the sending client as either a cheater or bugged
+
+/// encodes all the info necessary to generate a game as a 10 byte message
+let gameInfoToBytes (gameSize : int) genOption powerOp (seed : int) =
+    [|
+        yield! BitConverter.GetBytes gameSize
+        match genOption.NeutralGen with
+        | false -> yield 0uy
+        | true -> yield 1uy
+        match powerOp with
+        | PowerOption.Vanilla -> yield 0uy
+        | PowerOption.Low -> yield 1uy
+        | PowerOption.Medium -> yield 2uy
+        | PowerOption.High -> yield 3uy
+        | PowerOption.Guaranteed -> yield 4uy
+        yield! BitConverter.GetBytes seed
+    |]
+
+let decodeGameInfo (bytes : byte []) =
+    let gameSize = BitConverter.ToInt32 (bytes, 0)
+    let neutralGen =
+        match bytes.[4] with
+        | 0uy -> false
+        | 1uy -> true
+        | _ -> failwith "unsupported value for finding neutralGen"
+    let powerOp =
+        match bytes.[5] with
+            | 0uy -> PowerOption.Vanilla
+            | 1uy -> PowerOption.Low
+            | 2uy -> PowerOption.Medium
+            | 3uy -> PowerOption.High
+            | 4uy -> PowerOption.Guaranteed
+            | _ -> failwith "unsupported value for finding powerOp"
+    let seed = BitConverter.ToInt32 (bytes, 6)
+    (gameSize, { NeutralGen = neutralGen }, powerOp, seed)
+    
 
 /// Encodes a piece to a byte, has the form color (1 byte) shape (1 byte) shapeArgs (0 or 8 bytes)
 let pieceToBytes (color, shape) =

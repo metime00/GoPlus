@@ -92,3 +92,12 @@ type EncodingDecoding() =
         let piece = (Black, Normal)
         let (_, encodeDecode) = piece |> pieceToBytes |> decodePiece 0
         Assert.AreEqual(piece, encodeDecode)
+
+    [<TestMethod>]
+    member this.EncodingGameInfo () = 
+        let gameSize = 5
+        let genop = { NeutralGen = false }
+        let powerop = PowerOption.Low
+        let seed = 5
+        let encodeDecode = gameInfoToBytes gameSize genop powerop seed |> decodeGameInfo
+        Assert.AreEqual((gameSize, genop, powerop, seed), encodeDecode)

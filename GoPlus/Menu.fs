@@ -1,6 +1,7 @@
 ﻿module Menu
 
 open Window
+open Network
 open System
 open System.Net
 open System.Net.Sockets
@@ -41,33 +42,62 @@ type Menu (width, height) as this =
             if host then
                 let listener = new TcpListener(IPAddress.Any, port)
                 listener.Start ()
-                printf "I am hosting and waiting"
+                printfn "I am hosting and waiting"
                 let client = listener.AcceptTcpClient ()
-                printf "%s" (client.ToString ())
+                printfn "%s" (client.ToString ())
                 Some (client)
             elif networkBox.Text <> "" then
                 let ipAddress = IPAddress.Parse (networkBox.Text)
                 let endpoint = new IPEndPoint (ipAddress, port)
                 let requester = new TcpClient ()
-                printf "I am connecting"
+                printfn "I am connecting"
                 requester.Connect (endpoint)
-                printf "%s" (requester.ToString ())
+                printfn "%s" (requester.ToString ())
                 Some (requester)
             else
                 None
-                
-            
-        let gameSize = if gameSizeBox.Text = "" then 19 else Convert.ToInt32 gameSizeBox.Text
-        let powerOp =
-            let radio = Array.find (fun (x : RadioButton) -> x.Checked) powerUpFreq
-            match radio.Text with
-            | "Vanilla" -> Vanilla
-            | "Low" -> Low
-            | "Medium" -> Medium
-            | "High" -> High
-            | "Guaranteed" -> Guaranteed
-            | _ -> failwith "radio button had text that isn't supported"
-        let steve = new Window (gameSize, { NeutralGen = neutralCheck.Checked }, powerOp, 640, 480, client)
+        
+        let steve =     
+            match client with
+            | None ->
+                let gameSize = if gameSizeBox.Text = "" then 19 else Convert.ToInt32 gameSizeBox.Text
+                let powerOp =
+                    let radio = Array.find (fun (x : RadioButton) -> x.Checked) powerUpFreq
+                    match radio.Text with
+                    | "Vanilla" -> Vanilla
+                    | "Low" -> Low
+                    | "Medium" -> Medium
+                    | "High" -> High
+                    | "Guaranteed" -> Guaranteed
+                    | _ -> failwith "radio button had text that isn't supported"
+                new Window (gameSize, { NeutralGen = neutralCheck.Checked }, powerOp, 640, 480, client, (new Random ()).Next ())
+            | Some (client) when host ->
+                let gameSize = if gameSizeBox.Text = "" then 19 else Convert.ToInt32 gameSizeBox.Text
+                let genOp = { NeutralGen = neutralCheck.Checked }
+                let powerOp =
+                    let radio = Array.find (fun (x : RadioButton) -> x.Checked) powerUpFreq
+                    match radio.Text with
+                    | "Vanilla" -> Vanilla
+                    | "Low" -> Low
+                    | "Medium" -> Medium
+                    | "High" -> High
+                    | "Guaranteed" -> Guaranteed
+                    | _ -> failwith "radio button had text that isn't supported"
+                let seed = (new Random ()).Next ()
+
+                // send the game generation info to the other player
+                let message = gameInfoToBytes gameSize genOp powerOp seed
+                client.GetStream().Write (message, 0, message.Length)
+                printfn "i wrote game info to the stream hooray"
+                new Window (gameSize, genOp, powerOp, 640, 480, client, seed)
+            | Some (client) when not host ->
+                // read the gameInfo from the host
+                let gameInfo = Array.zeroCreate 10
+                if client.GetStream().Read (gameInfo, 0, gameInfo.Length) <> gameInfo.Length then
+                    failwith "could not read game info from the host"
+                let (gameSize, genOp, powerOp, seed) = decodeGameInfo gameInfo
+                printfn "I got this from the stream: %A" (decodeGameInfo gameInfo)
+                new Window (gameSize, genOp, powerOp, 640, 480, client, seed)
         steve.Show ()
         this.Close ()
         ()
