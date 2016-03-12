@@ -40,7 +40,6 @@ type Menu (width, height) as this =
     let goswips = new Label ()
 
     let startGame host x =
-        this.Hide ()
         let client = 
             if host then
                 let listener = new TcpListener(IPAddress.Any, port)
@@ -104,6 +103,7 @@ type Menu (width, height) as this =
                 let (gameSize, genOp, powerOp, seed) = decodeGameInfo gameInfo
                 let network = { Client = client; PlayerColor = Pieces.Color.White }
                 new Window (gameSize, genOp, powerOp, 640, 480, Some network, seed)
+        this.Hide ()
         steve.Show ()
         gameStarted <- true
         this.Close ()
@@ -155,4 +155,4 @@ type Menu (width, height) as this =
         if gameStarted then
             ()
         else
-            Application.Exit ()
+            Environment.Exit (0)

@@ -4,7 +4,7 @@
 // -1. optimize powerup placement code. It takes over 10x as long as normal play
 
 // 1. make tooltip showing what a powerup is when you hover mouse over it
-// make a general display label that shows the tooltip and the turn feedback, instead of writing over the powerup label
+// 1.5 make a general display label that shows the tooltip and the turn feedback, instead of writing over the powerup label
 
 // 2. make default option be guaranteed powerup every x turns, and which turn in that range is random,
 // as opposed to a random chance every turn
@@ -24,9 +24,6 @@ open System.Collections.Generic
 open System.Drawing
 open System.Windows.Forms
 
-/// Instance of the signal event from Network
-let signalReceived = new Event<SignalArgs> ()
-
 let brushFromColor color =
     match color with
     |  Pieces.Color.Neutral -> Brushes.Gray
@@ -42,13 +39,17 @@ let transparentBrushFromColor color =
     |  Pieces.Color.Neutral -> Brushes.Gray
     |  Pieces.Color.Black -> transparentBlack :> Brush
     |  Pieces.Color.White -> transparentWhite :> Brush
+    | _ -> failwith "there are no transparent brushes of this color"
 
 type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this =
     inherit Form ()
 
+    /// Instance of the signal event from Network
+    let signalReceived = new Event<_> ()
+
     let listenerThread = 
         match maybeNetwork with
-        | Some (networkArgs) -> Some (new Thread(listen networkArgs.Client signalReceived))
+        | Some (networkOptions) -> Some (new Thread(listen networkOptions.Client signalReceived))
         | None -> None
 
     ///scales a given coordinate by a certain amount and returns it as an int
@@ -60,6 +61,15 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
     let mutable curMoves : (int * int) list = [ ]
 
     let game = new Game (gameSize, gen, powerop, seed)
+
+    let canPlay () =
+        match maybeNetwork with
+        | Some networkOptions ->
+            if game.NextToMove = networkOptions.PlayerColor then
+                true
+            else
+                false
+        | None -> true
 
     /// Board for displaying, should be updated every click
     let mutable intermediateBoard = game.Board
@@ -91,12 +101,13 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
     let endGame args =
         match game.Stage with
         | Play ->
-            game.Pass () |> ignore
-            errorMessage <- ""
-            if game.Stage = Stage.Scoring then
-                turnDisplay.Text <- "Scoring Mode"
-                endGameButton.Text <- "End Game"
-            this.Invalidate ()
+            if canPlay () then
+                game.Pass () |> ignore
+                errorMessage <- ""
+                if game.Stage = Stage.Scoring then
+                    turnDisplay.Text <- "Scoring Mode"
+                    endGameButton.Text <- "End Game"
+                this.Invalidate ()
         | Scoring ->
             game.MakeMoves curMoves |> ignore
             let (blackScore, whiteScore) = game.CalulateScore ()
@@ -130,13 +141,16 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
         endGameButton.AutoSize <- true
         endGameButton.Click.Add endGame
         this.Controls.AddRange [| scoreDisplay; turnDisplay; powerupDisplay; endGameButton; undoButton |]
+        signalReceived.Publish.Add (this.OnSignalReceived)
+        
+
         //if there is a listener thread, start it now
         match listenerThread with
         | Some thread -> thread.Start ()
         | None -> ()
 
     override this.OnClosed args =
-        Application.Exit ()
+        Environment.Exit (0)
 
     // Window will handle timer and whose turn it is, it will translate ui actions into function calls on Game.
     // It decides when things happen, Game implements them
@@ -152,7 +166,8 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
         this.Invalidate ()
     
     override this.OnMouseDown args =
-        if args.X < scale this.ClientSize.Width && args.Y < scale this.ClientSize.Width then
+        if args.X < scale this.ClientSize.Width && args.Y < scale this.ClientSize.Width 
+           && canPlay () then
             let x = args.X / squareSize
             let y = args.Y / squareSize
             let moves = curMoves @ [(x, y)]
@@ -162,6 +177,10 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                     intermediateBoard <- game.Board
                     curMoves <- []
                     errorMessage <- ""
+                    //send the moves to the other player
+                    if Option.isSome maybeNetwork then
+                        let networkOptions = Option.get maybeNetwork
+                        sendMoves networkOptions.Client moves
                 | Reject message ->
                     errorMessage <- message
             else
@@ -174,33 +193,46 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                     errorMessage <- message
             this.Invalidate ()
 
+    [<CLIEvent>]
     member this.SignalReceived = signalReceived.Publish
 
     /// This is where the Window handles a move by the other player
     member this.OnSignalReceived (args : SignalArgs) =
-            if game.GetMovesNeeded () = List.length args.MoveCoords && game.Stage = Play then
-                match game.MakeMoves args.MoveCoords with
-                | Accept () ->
-                    intermediateBoard <- game.Board
-                    curMoves <- []
-                    errorMessage <- ""
-                | Reject message ->
-                    errorMessage <- message
+        let moves = args.MoveCoords
+        let networkOptions = Option.get maybeNetwork
+        if game.GetMovesNeeded () = List.length moves 
+            && game.Stage = Play 
+            && not (canPlay ()) then
+            match game.MakeMoves moves with
+            | Accept () ->
+                intermediateBoard <- game.Board
+            | Reject message ->
+                failwith "the other player is broken or cheating"
+        this.Invalidate ()
     
     override this.OnPaint args =
         scoreDisplay.Text <-
+            let scoreString = 
+                match maybeNetwork with
+                | Some networkOptions -> String.Format("score: {0}", game.GetScore networkOptions.PlayerColor)
+                | None -> String.Format("current player's score: {0}", game.GetScore game.NextToMove)
             match game.Stage with
-            | Play -> String.Format("current player's score: {0}", game.GetScore game.NextToMove)
+            | Play -> scoreString
             | Scoring -> ""
 
         turnDisplay.Text <-
             match game.Stage with
             | Play ->
-                match game.NextToMove with
+                let color =
+                    match maybeNetwork with
+                    | Some networkOptions -> networkOptions.PlayerColor
+                    | None -> game.NextToMove
+                match color with
                 | Black ->
                     "Black"
                 | White ->
                     "White"
+                | _ -> failwith "it can only be White or Black's turn during play"
             | Scoring ->
                 ""
 
@@ -232,7 +264,11 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                 let x = mouseX / squareSize
                 let y = mouseY / squareSize
                 if boundCheck (x, y) size1 size2 then
-                    args.Graphics.FillEllipse(transparentBrushFromColor(game.NextToMove), x * squareSize, y * squareSize, squareSize, squareSize) 
+                    let color =
+                        match maybeNetwork with
+                        | Some networkOptions -> networkOptions.PlayerColor
+                        | None -> game.NextToMove
+                    args.Graphics.FillEllipse(transparentBrushFromColor(color), x * squareSize, y * squareSize, squareSize, squareSize) 
             | Scoring -> ()
 
         for i = 0 to size1 - 1 do

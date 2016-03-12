@@ -18,21 +18,28 @@ type NetworkArgs =
     }
 
 type SignalArgs (moveCoords) =
+    inherit EventArgs ()
     member this.MoveCoords : (int * int) list = moveCoords
 
-/// Method for a listener thread, that waits for a move to be sent and then triggers the event for receiving a signal
-let listen (client : TcpClient) (event : Event<SignalArgs>) () =
-    let sizeBuffer = Array.zeroCreate 4
-    let stream = client.GetStream ()
-    if stream.Read (sizeBuffer, 0, Array.length sizeBuffer) <> Array.length sizeBuffer then
-        failwith "couldn't read enough bytes to find the byte length of the message"
-    let buffer = Array.zeroCreate (BitConverter.ToInt32 (sizeBuffer, 0))
-    if stream.Read (buffer, 0, Array.length buffer) <> Array.length buffer then
-        failwith "couldn't read enough bytes to read the whole message"
-    let moves = decode buffer
-    event.Trigger (new SignalArgs (moves))
+/// Method for a listener thread, that loops and waits for a move to be sent and then triggers the event for receiving a signal
+let listen (client : TcpClient) (event : Event<_>) () =
+    while true do
+        printfn "I'm waiting for moves"
+        let sizeBuffer = Array.zeroCreate 4
+        let stream = client.GetStream ()
+        if stream.Read (sizeBuffer, 0, Array.length sizeBuffer) <> Array.length sizeBuffer then
+            failwith "couldn't read enough bytes to find the byte length of the message"
+        let buffer = Array.zeroCreate (BitConverter.ToInt32 (sizeBuffer, 0))
+        if stream.Read (buffer, 0, Array.length buffer) <> Array.length buffer then
+            failwith "couldn't read enough bytes to read the whole message"
+        let moves = decode buffer
+        printfn "just received the other player's move"
+        event.Trigger (new SignalArgs (moves))
 
 let sendMoves (client : TcpClient) moves =
+    printfn "I'm sending my moves"
     let stream = client.GetStream ()
     let message = encode moves
+    let messageLengthBytes = BitConverter.GetBytes (Array.length message)
+    stream.Write (messageLengthBytes, 0, Array.length messageLengthBytes)
     stream.Write (message, 0, Array.length message)
