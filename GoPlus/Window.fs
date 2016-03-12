@@ -3,6 +3,8 @@
 
 // -1. optimize powerup placement code. It takes over 10x as long as normal play
 
+// 0. make pass work, some sort of byte flag that says whether or not it's a pass or moves
+
 // 1. make tooltip showing what a powerup is when you hover mouse over it
 // 1.5 make a general display label that shows the tooltip and the turn feedback, instead of writing over the powerup label
 
@@ -10,6 +12,8 @@
 // as opposed to a random chance every turn
 
 // 3. make graphics be images
+
+// 4. make code for loading played games, going back in time, branching, encoding and decoding the game as a file
 
 open Pieces
 open Board
@@ -223,15 +227,11 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
         turnDisplay.Text <-
             match game.Stage with
             | Play ->
-                let color =
-                    match maybeNetwork with
-                    | Some networkOptions -> networkOptions.PlayerColor
-                    | None -> game.NextToMove
-                match color with
+                match game.NextToMove with
                 | Black ->
-                    "Black"
+                    "Black's move"
                 | White ->
-                    "White"
+                    "White's move"
                 | _ -> failwith "it can only be White or Black's turn during play"
             | Scoring ->
                 ""
@@ -241,11 +241,16 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
             | "" ->
                 match game.Stage with
                 | Play ->
-                    match game.GetPlayerPowerup game.NextToMove with
+                    let color =
+                        match maybeNetwork with
+                        | None -> game.NextToMove
+                        | Some networkOptions -> networkOptions.PlayerColor
+                    match game.GetPlayerPowerup color with
                     | None ->
                         "No Powerup"
                     | Some x ->
                         String.Format("{0}, {1} moves remaining", Powerup.powerupString x game.NextToMove, game.GetMovesNeeded () - List.length curMoves)
+                        
                 | Scoring ->
                     ""
             | x -> x
