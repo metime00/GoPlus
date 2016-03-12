@@ -3,9 +3,6 @@
 
 // -1. optimize powerup placement code. It takes over 10x as long as normal play
 
-// BUGFIX: 0. make valid function check if there are any coordinates that mark duplicate groups dead, aka mark group dead at 0, 0 twice should be rejected.
-// this prevents getting extra score and having redundant move lists
-
 // 1. make tooltip showing what a powerup is when you hover mouse over it
 // make a general display label that shows the tooltip and the turn feedback, instead of writing over the powerup label
 

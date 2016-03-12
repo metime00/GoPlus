@@ -50,6 +50,20 @@ type BoardActions() =
                 Assert.AreEqual (game1.Board.[i,j], game2.Board.[i,j])
 
 [<TestClass>]
+type HelperFunctions() = 
+    [<TestMethod>]
+    member this.Hash () = 
+        let game = new Game (3, { NeutralGen = false }, Vanilla, 0)
+        game.Board.[0,0] <- Some (Pickup (Powerup.L), Shape.Normal)
+        game.Board.[0,1] <- Some (Black, Shape.Normal)
+        game.Board.[0,2] <- Some (White, Shape.Normal)
+        game.Board.[2,0] <- Some (Pickup (Powerup.L), Shape.Normal)
+        game.Board.[2,2] <- Some (Pickup (Powerup.L), Shape.Normal)
+        let seed = 0
+        let hash = genHash seed game.Board
+        Assert.AreNotEqual(seed, hash)
+
+[<TestClass>]
 type EncodingDecoding() = 
     [<TestMethod>]
     member this.EncodingFullMove () = 

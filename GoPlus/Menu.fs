@@ -15,6 +15,8 @@ let port = 33764
 type Menu (width, height) as this =
     inherit Form ()
 
+    let mutable gameStarted = false
+
     let gameSizeLabel = new Label ()
     let gameSizeBox = new TextBox ()
     let networkLabel = new Label ()
@@ -87,6 +89,7 @@ type Menu (width, height) as this =
 
                 // send the game generation info to the other player
                 let message = gameInfoToBytes gameSize genOp powerOp seed
+
                 client.GetStream().Write (message, 0, message.Length)
                 printfn "i wrote game info to the stream hooray"
                 new Window (gameSize, genOp, powerOp, 640, 480, client, seed)
@@ -95,10 +98,12 @@ type Menu (width, height) as this =
                 let gameInfo = Array.zeroCreate 10
                 if client.GetStream().Read (gameInfo, 0, gameInfo.Length) <> gameInfo.Length then
                     failwith "could not read game info from the host"
+
                 let (gameSize, genOp, powerOp, seed) = decodeGameInfo gameInfo
                 printfn "I got this from the stream: %A" (decodeGameInfo gameInfo)
                 new Window (gameSize, genOp, powerOp, 640, 480, client, seed)
         steve.Show ()
+        gameStarted <- true
         this.Close ()
         ()
 
@@ -143,3 +148,9 @@ type Menu (width, height) as this =
         this.Controls.AddRange [| networkLabel; networkBox; gameSizeLabel; gameSizeBox; startGameButton; hostGameButton; goswips; neutralCheck |]
         this.Controls.AddRange [| for i in powerUpFreq do yield i :> Control |]
         this.Controls.Add powerUpLabel
+
+    override this.OnClosed args =
+        if gameStarted then
+            ()
+        else
+            Application.Exit ()
