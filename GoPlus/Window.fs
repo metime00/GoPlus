@@ -11,9 +11,10 @@
 // 2. make default option be guaranteed powerup every x turns, and which turn in that range is random,
 // as opposed to a random chance every turn
 
-// 3. make graphics be images
+// 3. make code for loading played games, going back in time, branching, encoding and decoding the game as a file
+// you can visually inspect old states and branched states during play
 
-// 4. make code for loading played games, going back in time, branching, encoding and decoding the game as a file
+// 4. make graphics be images
 
 open Pieces
 open Board

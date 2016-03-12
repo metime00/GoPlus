@@ -186,7 +186,7 @@ let rec valid (moves : Move list) state prevState =
                         if List.filter (fun (x, y) -> cells.[x,y] <> Free) (pieceCoords (snd piece) (x, y)) = [] then Accept ()
                         else Reject "Piece already exists there"
                 | Reject message -> Reject message
-            let optimal = function
+            let suicide = function
                 | Accept () ->
                     let enclosingColor =
                         match state.nextToMove with
@@ -231,7 +231,7 @@ let rec valid (moves : Move list) state prevState =
                         if diff <> [] then Accept ()
                         else Reject "Placing that piece would violate the ko rule"
                 | Reject message -> Reject message
-            bounds |> existing |> optimal |> ko //does a sequence of checks and returns whether or not a problem occured and where
+            bounds |> existing |> suicide |> ko //does a sequence of checks and returns whether or not a problem occured and where
         | RemovePiece (x, y) ->
             match intersectingPieces [ (x, y) ] state.board with
             | [] -> 
