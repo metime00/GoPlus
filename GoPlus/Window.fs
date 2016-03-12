@@ -19,9 +19,13 @@ open Util
 open GameOptions
 open Network
 open System
+open System.Threading
 open System.Collections.Generic
 open System.Drawing
 open System.Windows.Forms
+
+/// Instance of the signal event from Network
+let signalReceived = new Event<SignalArgs> ()
 
 let brushFromColor color =
     match color with
@@ -39,8 +43,13 @@ let transparentBrushFromColor color =
     |  Pieces.Color.Black -> transparentBlack :> Brush
     |  Pieces.Color.White -> transparentWhite :> Brush
 
-type Window (gameSize, gen, powerop, width, height, client, seed) as this =
+type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this =
     inherit Form ()
+
+    let listenerThread = 
+        match maybeNetwork with
+        | Some (networkArgs) -> Some (new Thread(listen networkArgs.Client signalReceived))
+        | None -> None
 
     ///scales a given coordinate by a certain amount and returns it as an int
     let scale coord = (int) ((float coord) * 2.0 / 3.0)
@@ -121,6 +130,10 @@ type Window (gameSize, gen, powerop, width, height, client, seed) as this =
         endGameButton.AutoSize <- true
         endGameButton.Click.Add endGame
         this.Controls.AddRange [| scoreDisplay; turnDisplay; powerupDisplay; endGameButton; undoButton |]
+        //if there is a listener thread, start it now
+        match listenerThread with
+        | Some thread -> thread.Start ()
+        | None -> ()
 
     override this.OnClosed args =
         Application.Exit ()
@@ -163,9 +176,16 @@ type Window (gameSize, gen, powerop, width, height, client, seed) as this =
 
     member this.SignalReceived = signalReceived.Publish
 
-    member this.OnSignalReceived args =
-        
-        ()
+    /// This is where the Window handles a move by the other player
+    member this.OnSignalReceived (args : SignalArgs) =
+            if game.GetMovesNeeded () = List.length args.MoveCoords && game.Stage = Play then
+                match game.MakeMoves args.MoveCoords with
+                | Accept () ->
+                    intermediateBoard <- game.Board
+                    curMoves <- []
+                    errorMessage <- ""
+                | Reject message ->
+                    errorMessage <- message
     
     override this.OnPaint args =
         scoreDisplay.Text <-

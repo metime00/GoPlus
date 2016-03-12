@@ -50,6 +50,7 @@
     <Compile Include="Powerup.fs" />
     <Compile Include="Gameplay.fs" />
     <Compile Include="Game.fs" />
+    <Compile Include="Encoding.fs" />
     <Compile Include="Network.fs" />
     <Compile Include="Window.fs" />
     <Compile Include="Menu.fs" />

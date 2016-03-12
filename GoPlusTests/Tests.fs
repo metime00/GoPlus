@@ -4,7 +4,7 @@
 
 
 open System
-open Network
+open Encoding
 open Microsoft.VisualStudio.TestTools.UnitTesting
 open Pieces
 open GameOptions
@@ -65,47 +65,11 @@ type HelperFunctions() =
 
 [<TestClass>]
 type EncodingDecoding() = 
-    [<TestMethod>]
-    member this.EncodingFullMove () = 
-        let moves = [ Move.AddPiece ((Black, Normal), (5, 7)); Move.AddPiece ((Black, Normal), (2, 9)); Move.AddPiece ((Black, Normal), (0, 0)) ]
-        let encodeDecode = moves |> encode |> decode
-        Assert.AreEqual(moves, encodeDecode)
-    
-    [<TestMethod>]
-    member this.EncodingAddNormalPiece () = 
-        let move = Move.AddPiece ((Black, Normal), (5, 7))
-        let (_, encodeDecode) = move |> moveToBytes |> decodeMove 0
-        Assert.AreEqual(move, encodeDecode)
 
     [<TestMethod>]
-    member this.EncodingAddBigPiece () = 
-        let move = Move.AddPiece ((White, Big (1, 1)), (5, 7))
-        let (_, encodeDecode) = move |> moveToBytes |> decodeMove 0
-        Assert.AreEqual(move, encodeDecode)
-
-    [<TestMethod>]
-    member this.EncodingRemovePiece () = 
-        let move = Move.RemovePiece (0, 15)
-        let (_, encodeDecode) = move |> moveToBytes |> decodeMove 0
-        Assert.AreEqual(move, encodeDecode)
-
-    [<TestMethod>]
-    member this.EncodingPass () = 
-        let move = Move.Pass
-        let (_, encodeDecode) = move |> moveToBytes |> decodeMove 0
-        Assert.AreEqual(move, encodeDecode)
-
-    [<TestMethod>]
-    member this.EncodingMarkDead () = 
-        let move = Move.MarkDead [ (0,0); (5, 7); (2, 3); (3, 2) ]
-        let (_, encodeDecode) = move |> moveToBytes |> decodeMove 0
-        Assert.AreEqual(move, encodeDecode)
-
-    [<TestMethod>]
-    member this.EncodingPiece () = 
-        let piece = (Black, Normal)
-        let (_, encodeDecode) = piece |> pieceToBytes |> decodePiece 0
-        Assert.AreEqual(piece, encodeDecode)
+    member this.EncodingMove () = 
+        let moves = [ (0, 5); (7, 2) ]
+        Assert.AreEqual(moves, moves |> encode |> decode)
 
     [<TestMethod>]
     member this.EncodingGameInfo () = 

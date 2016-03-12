@@ -1,6 +1,7 @@
 ﻿module Menu
 
 open Window
+open Encoding
 open Network
 open System
 open System.Net
@@ -72,7 +73,7 @@ type Menu (width, height) as this =
                     | "High" -> High
                     | "Guaranteed" -> Guaranteed
                     | _ -> failwith "radio button had text that isn't supported"
-                new Window (gameSize, { NeutralGen = neutralCheck.Checked }, powerOp, 640, 480, client, (new Random ()).Next ())
+                new Window (gameSize, { NeutralGen = neutralCheck.Checked }, powerOp, 640, 480, None, (new Random ()).Next ())
             | Some (client) when host ->
                 let gameSize = if gameSizeBox.Text = "" then 19 else Convert.ToInt32 gameSizeBox.Text
                 let genOp = { NeutralGen = neutralCheck.Checked }
@@ -91,17 +92,18 @@ type Menu (width, height) as this =
                 let message = gameInfoToBytes gameSize genOp powerOp seed
 
                 client.GetStream().Write (message, 0, message.Length)
-                printfn "i wrote game info to the stream hooray"
-                new Window (gameSize, genOp, powerOp, 640, 480, client, seed)
+
+                let network = { Client = client; PlayerColor = Pieces.Color.Black }
+                new Window (gameSize, genOp, powerOp, 640, 480, Some network, seed)
             | Some (client) when not host ->
                 // read the gameInfo from the host
                 let gameInfo = Array.zeroCreate 10
                 if client.GetStream().Read (gameInfo, 0, gameInfo.Length) <> gameInfo.Length then
                     failwith "could not read game info from the host"
-
+                    
                 let (gameSize, genOp, powerOp, seed) = decodeGameInfo gameInfo
-                printfn "I got this from the stream: %A" (decodeGameInfo gameInfo)
-                new Window (gameSize, genOp, powerOp, 640, 480, client, seed)
+                let network = { Client = client; PlayerColor = Pieces.Color.White }
+                new Window (gameSize, genOp, powerOp, 640, 480, Some network, seed)
         steve.Show ()
         gameStarted <- true
         this.Close ()
