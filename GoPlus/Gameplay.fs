@@ -276,7 +276,7 @@ let apply (moves : Move list) state =
                 let newBlack = { color = state.black.color; score = state.black.score; powerup = None }
                 { seed = state.seed; black = newBlack; white = state.white; board = state.board; powerups = state.powerups; nextToMove = state.nextToMove }
             | White ->
-                let newWhite = { color = state.black.color; score = state.black.score; powerup = None }
+                let newWhite = { color = state.white.color; score = state.white.score; powerup = None }
                 { seed = state.seed; black = state.black; white = newWhite; board = state.board; powerups = state.powerups; nextToMove = state.nextToMove }
             
     let newState = perform moves powerupLessState

@@ -127,13 +127,13 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
         this.FormBorderStyle <- FormBorderStyle.Sizable
         this.MaximizeBox <- true
         this.BackColor <- Color.Tan
-        scoreDisplay.Text <- (game.GetScore game.NextToMove).ToString ()
+        scoreDisplay.Text <- ""
         scoreDisplay.Dock <- DockStyle.Right
         scoreDisplay.AutoSize <- true
-        turnDisplay.Text <- "Black" //black begins game
+        turnDisplay.Text <- ""
         turnDisplay.Size <- new Size(120, 50) //bad hardcoding make it better eventually
         turnDisplay.Location <- new Point(this.ClientSize.Width - turnDisplay.Size.Width, scoreDisplay.Size.Height)
-        powerupDisplay.Text <- "No Powerup" //black begins game
+        powerupDisplay.Text <- ""
         powerupDisplay.Size <- new Size(120, 50) //bad hardcoding make it better eventually
         powerupDisplay.Location <- new Point(this.ClientSize.Width - turnDisplay.Size.Width, scoreDisplay.Size.Height + turnDisplay.Height)
         undoButton.Text <- "Undo"
@@ -249,7 +249,10 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                     | None ->
                         "No Powerup"
                     | Some x ->
-                        String.Format("{0}, {1} moves remaining", Powerup.powerupString x game.NextToMove, game.GetMovesNeeded () - List.length curMoves)
+                        match canPlay () with
+                        | true -> 
+                            String.Format("{0}, {1} moves remaining", Powerup.powerupString x color, game.GetMovesNeeded () - List.length curMoves)
+                        | false -> Powerup.powerupString x color
                         
                 | Scoring ->
                     ""
