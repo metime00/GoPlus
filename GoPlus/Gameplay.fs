@@ -303,9 +303,18 @@ let apply (moves : Move list) state =
                 newState.board
             else
                 let emptySquares =
-                    [ for i = 0 to Array2D.length1 newState.board - 1 do for j = 0 to Array2D.length1 newState.board - 1 do yield (i, j) ] 
-                    |> List.filter (fun (x, y) -> valid [ AddPiece ((Neutral, Normal), (x, y)) ] newState None = Accept () ) //only choose from the coordinates that it's possible to place a piece on
-                    |> List.filter (fun (x, y) -> findTakenAdjacent (x, y) (genCells state.board) = [] || checkDead state.nextToMove (genCells (addPieces newState.board [((Neutral, Normal), (x, y))]) ) = [])
+                    let addCell cells (x, y) =
+                        let out = Array2D.copy cells
+                        out.[x,y] <- Cell.Taken Neutral
+                        out
+                    let cells = genCells newState.board
+                    [ 
+                        for i = 0 to Array2D.length1 newState.board - 1 do 
+                            for j = 0 to Array2D.length1 newState.board - 1 do 
+                                //only can place powerups where they are not adjacent to any other pieces
+                                if cells.[i,j] = Cell.Free && findTakenAdjacent (i, j) cells = [] then
+                                    yield (i, j) 
+                    ]
                 if emptySquares <> [] then
                     addPieces newState.board [ ((Pickup (powerupChoose randy), Normal), List.nth emptySquares (randy.Next (List.length emptySquares))) ]
                 else
