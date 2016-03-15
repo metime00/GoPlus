@@ -1,8 +1,6 @@
 ﻿module Window
 // TODO
 
-// -1. optimize powerup placement code. It takes over 10x as long as normal play
-
 // 0. make pass work, some sort of byte flag that says whether or not it's a pass or moves
 
 // 1. make tooltip showing what a powerup is when you hover mouse over it
@@ -89,6 +87,13 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
     let endGameButton = new Button ()
     let undoButton = new Button ()
 
+    let makePass () =
+        game.Pass () |> ignore
+        errorMessage <- ""
+        if game.Stage = Stage.Scoring then
+            turnDisplay.Text <- "Scoring Mode"
+            endGameButton.Text <- "End Game"
+
     let undo args =
         curMoves <- allBut curMoves
         errorMessage <- ""
@@ -107,11 +112,10 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
         match game.Stage with
         | Play ->
             if canPlay () then
-                game.Pass () |> ignore
-                errorMessage <- ""
-                if game.Stage = Stage.Scoring then
-                    turnDisplay.Text <- "Scoring Mode"
-                    endGameButton.Text <- "End Game"
+                makePass ()
+                if Option.isSome maybeNetwork then
+                    let networkOptions = Option.get maybeNetwork
+                    sendMoves networkOptions.Client []
                 this.Invalidate ()
         | Scoring ->
             game.MakeMoves curMoves |> ignore
@@ -205,7 +209,9 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
     member this.OnSignalReceived (args : SignalArgs) =
         let moves = args.MoveCoords
         let networkOptions = Option.get maybeNetwork
-        if game.GetMovesNeeded () = List.length moves 
+        if List.length moves = 0 then
+          makePass ()  
+        elif game.GetMovesNeeded () = List.length moves 
             && game.Stage = Play 
             && not (canPlay ()) then
             match game.MakeMoves moves with

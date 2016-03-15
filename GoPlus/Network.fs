@@ -29,11 +29,16 @@ let listen (client : TcpClient) (event : Event<_>) () =
         let stream = client.GetStream ()
         if stream.Read (sizeBuffer, 0, Array.length sizeBuffer) <> Array.length sizeBuffer then
             failwith "couldn't read enough bytes to find the byte length of the message"
-        let buffer = Array.zeroCreate (BitConverter.ToInt32 (sizeBuffer, 0))
-        if stream.Read (buffer, 0, Array.length buffer) <> Array.length buffer then
-            failwith "couldn't read enough bytes to read the whole message"
-        let moves = decode buffer
-        printfn "just received the other player's move"
+        let moves =
+            match BitConverter.ToInt32 (sizeBuffer, 0) with
+            | 0 ->
+                []
+            | x ->
+                let buffer = Array.zeroCreate (x)
+                if stream.Read (buffer, 0, Array.length buffer) <> Array.length buffer then
+                    failwith "couldn't read enough bytes to read the whole message"
+                printfn "just received the other player's move"
+                decode buffer
         event.Trigger (new SignalArgs (moves))
 
 let sendMoves (client : TcpClient) moves =
