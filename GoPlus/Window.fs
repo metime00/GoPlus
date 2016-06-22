@@ -1,8 +1,6 @@
 ﻿module Window
 // TODO
 
-// 0. make pass work, some sort of byte flag that says whether or not it's a pass or moves
-
 // 1. make tooltip showing what a powerup is when you hover mouse over it
 // 1.5 make a general display label that shows the tooltip and the turn feedback, instead of writing over the powerup label
 
@@ -68,10 +66,13 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
     let canPlay () =
         match maybeNetwork with
         | Some networkOptions ->
-            if game.NextToMove = networkOptions.PlayerColor then
-                true
-            else
-                false
+            match game.Stage with
+            | Scoring -> true
+            | Play ->
+                if game.NextToMove = networkOptions.PlayerColor then
+                    true
+                else
+                    false
         | None -> true
 
     /// Board for displaying, should be updated every click
@@ -90,21 +91,25 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
     let makePass () =
         game.Pass () |> ignore
         errorMessage <- ""
-        if game.Stage = Stage.Scoring then
-            turnDisplay.Text <- "Scoring Mode"
-            endGameButton.Text <- "End Game"
+        this.Invalidate ()
 
     let undo args =
-        curMoves <- allBut curMoves
         errorMessage <- ""
-        match curMoves with
-        | [] ->
+        match List.length curMoves with
+        | 0
+        | 1 ->
+            curMoves <- allBut curMoves
             intermediateBoard <- game.Board
             this.Invalidate ()
         | _ ->
+            let lastMove = curMoves.[List.length curMoves - 1]
+            curMoves <- allBut curMoves
             match game.CalculateState curMoves with
             | Accept (_, intermediateState) ->
                 intermediateBoard <- intermediateState.board
+                if game.Stage = Scoring && Option.isSome maybeNetwork then
+                    let networkOptions = Option.get maybeNetwork
+                    sendMoves networkOptions.Client [lastMove]
                 this.Invalidate ()
             | _ -> failwith "shouldn't be able to fail by removing a move"
 
@@ -192,6 +197,9 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                         sendMoves networkOptions.Client moves
                 | Reject message ->
                     errorMessage <- message
+            else if game.Stage = Scoring then
+            //send the intermediate move if it's scoring mode, don't wait for the moves needed, just update the current moves stack across the network
+                Send the intermediate move 
             else
                 match game.CalculateState moves with
                 | Accept (_, intermediateState) ->
@@ -210,6 +218,7 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
         let moves = args.MoveCoords
         let networkOptions = Option.get maybeNetwork
         if List.length moves = 0 then
+          printfn "am I an error? %A" game.Stage
           makePass ()  
         elif game.GetMovesNeeded () = List.length moves 
             && game.Stage = Play 
@@ -219,9 +228,27 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                 intermediateBoard <- game.Board
             | Reject message ->
                 failwith "the other player is broken or cheating"
+        elif game.Stage = Scoring then
+            if [curMoves.[List.length curMoves - 1]] = moves then
+                curMoves <- allBut curMoves
+                match curMoves with
+                | [] ->
+                    intermediateBoard <- game.Board
+                    this.Invalidate ()
+                | _ ->
+                    match game.CalculateState curMoves with
+                    | Accept (_, intermediateState) ->
+                        intermediateBoard <- intermediateState.board
+                        this.Invalidate ()
+                    | _ -> failwith "shouldn't be able to fail by removing a move"
         this.Invalidate ()
     
     override this.OnPaint args =
+        endGameButton.Text <- 
+            match game.Stage with
+            | Play -> "Pass"
+            | Scoring -> "End Game"
+            
         scoreDisplay.Text <-
             let scoreString = 
                 match maybeNetwork with
@@ -241,7 +268,7 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                     "White's move"
                 | _ -> failwith "it can only be White or Black's turn during play"
             | Scoring ->
-                ""
+                "Scoring Mode"
 
         powerupDisplay.Text <-
             match errorMessage with
