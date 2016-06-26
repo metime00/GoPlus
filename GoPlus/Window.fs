@@ -128,6 +128,9 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                 this.Invalidate ()
         | Scoring ->
             game.MakeMoves curMoves |> ignore
+            if Option.isSome maybeNetwork then
+                let networkOptions = Option.get maybeNetwork
+                sendMoves networkOptions.Client []
             let (blackScore, whiteScore) = game.CalulateScore ()
             MessageBox.Show(String.Format("black score: {0}, white score: {1}", blackScore, whiteScore)) |> ignore
             this.Close ()
@@ -223,8 +226,14 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
         let moves = args.MoveCoords
         let networkOptions = Option.get maybeNetwork
         if List.length moves = 0 then
-          printfn "am I an error? %A" game.Stage
-          makePass ()  
+            match game.Stage with
+            | Play -> makePass ()  
+            | Scoring ->
+                //end the game
+                game.MakeMoves curMoves |> ignore
+                let (blackScore, whiteScore) = game.CalulateScore ()
+                MessageBox.Show(String.Format("black score: {0}, white score: {1}", blackScore, whiteScore)) |> ignore
+                this.Close ()
         elif game.GetMovesNeeded () = List.length moves 
             && game.Stage = Play 
             && not (canPlay ()) then
