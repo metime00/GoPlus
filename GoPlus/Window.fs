@@ -96,10 +96,14 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
     let undo args =
         errorMessage <- ""
         match List.length curMoves with
-        | 0
+        | 0 -> ()
         | 1 ->
+            let lastMove = curMoves.[List.length curMoves - 1]
             curMoves <- allBut curMoves
             intermediateBoard <- game.Board
+            if game.Stage = Scoring && Option.isSome maybeNetwork then
+                let networkOptions = Option.get maybeNetwork
+                sendMoves networkOptions.Client [lastMove]
             this.Invalidate ()
         | _ ->
             let lastMove = curMoves.[List.length curMoves - 1]
@@ -197,15 +201,16 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                         sendMoves networkOptions.Client moves
                 | Reject message ->
                     errorMessage <- message
-            else if game.Stage = Scoring then
-            //send the intermediate move if it's scoring mode, don't wait for the moves needed, just update the current moves stack across the network
-                Send the intermediate move 
             else
                 match game.CalculateState moves with
                 | Accept (_, intermediateState) ->
                     intermediateBoard <- intermediateState.board
                     curMoves <- moves
                     errorMessage <- ""
+                    if game.Stage = Scoring && Option.isSome maybeNetwork then
+                    //send the intermediate move if it's scoring mode
+                        let networkOptions = Option.get maybeNetwork
+                        sendMoves networkOptions.Client moves
                 | Reject message ->
                     errorMessage <- message
             this.Invalidate ()
@@ -229,7 +234,8 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
             | Reject message ->
                 failwith "the other player is broken or cheating"
         elif game.Stage = Scoring then
-            if [curMoves.[List.length curMoves - 1]] = moves then
+            //don't wait for the moves needed, just update the current moves stack across the network
+            if List.length curMoves > 0 && [curMoves.[List.length curMoves - 1]] = moves then
                 curMoves <- allBut curMoves
                 match curMoves with
                 | [] ->
@@ -240,7 +246,14 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                     | Accept (_, intermediateState) ->
                         intermediateBoard <- intermediateState.board
                         this.Invalidate ()
-                    | _ -> failwith "shouldn't be able to fail by removing a move"
+                    | _ -> failwith "the other player is broken or cheating"
+            else
+                curMoves <- curMoves @ moves
+                match game.CalculateState curMoves with
+                | Accept (_, intermediateState) ->
+                    intermediateBoard <- intermediateState.board
+                    errorMessage <- ""
+                | _ -> failwith "the other player is broken or cheating"
         this.Invalidate ()
     
     override this.OnPaint args =
