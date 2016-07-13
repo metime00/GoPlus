@@ -79,3 +79,31 @@ type EncodingDecoding() =
         let seed = 5
         let encodeDecode = gameInfoToBytes gameSize genop powerop seed |> decodeGameInfo
         Assert.AreEqual((gameSize, genop, powerop, seed), encodeDecode)
+
+[<TestClass>]
+type GameActions() = 
+    [<TestMethod>]
+    member this.EnsureScoringMode () = 
+        let size = 3
+        let game = new Game (size, { NeutralGen = false }, PowerOption.Vanilla, 0)
+        Assert.AreEqual (game.MakeMoves [ (1, 1) ], Accept ())
+        Assert.AreEqual (game.MakeMoves [ (1, 2) ], Accept ())
+        Assert.AreEqual (game.MakeMoves [ (0, 0) ], Accept ())
+        Assert.AreEqual (game.Pass (), Accept ())
+        Assert.AreEqual (game.Pass (), Accept ())
+        Assert.AreEqual (game.Stage, Stage.Scoring)
+
+    [<TestMethod>]
+    member this.RevertGameState () = 
+        let size = 3
+        let game = new Game (size, { NeutralGen = false }, PowerOption.Vanilla, 0)
+        Assert.AreEqual (game.MakeMoves [ (1, 1) ], Accept ())
+        Assert.AreEqual (game.MakeMoves [ (1, 2) ], Accept ())
+        Assert.AreEqual (game.MakeMoves [ (0, 0) ], Accept ())
+        Assert.AreEqual (game.Pass (), Accept ())
+        let next = game.NextToMove
+        Assert.AreEqual (game.Pass (), Accept ())
+        Assert.AreEqual (game.Stage, Stage.Scoring)
+        game.RevertToPlay ()
+        Assert.AreEqual (game.Stage, Stage.Play)
+        Assert.AreEqual (game.NextToMove, next)

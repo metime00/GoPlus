@@ -1,6 +1,9 @@
 ﻿module Window
 // TODO
 
+// 0. make the end game in scoring over network act like passing in the play stage, where both players have to confirm it
+// 0.5 Make a new button for scoring stage only that when pressed sets the game back to the last move and returns to the play stage
+
 // 1. make tooltip showing what a powerup is when you hover mouse over it
 // 1.5 make a general display label that shows the tooltip and the turn feedback, instead of writing over the powerup label
 

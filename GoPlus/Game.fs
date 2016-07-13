@@ -103,6 +103,15 @@ type Game (size, genop, powerop, seed) =
         | false -> Stage.Play
         | true -> Stage.Scoring
 
+    /// If the game stage is scoring, revert the last pass
+    member this.RevertToPlay () =
+        if this.Stage = Scoring then
+            state <- prevStates.Item (prevStates.Count - 1)
+            prevStates.RemoveAt (prevStates.Count - 1)
+            movesMade.RemoveAt (movesMade.Count - 1)
+        else
+            ()
+
     member this.NextToMove =
         state.nextToMove
 
