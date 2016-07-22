@@ -6,6 +6,12 @@ open Pieces
 open System
 open System.Net.Sockets
 
+type GameMessage =
+    | Moves of (int * int) list
+    | Pass
+    | Undo
+    | Revert
+
 /// encodes all the info necessary to generate a game as a 10 byte message
 let gameInfoToBytes (gameSize : int) genOption powerOp (seed : int) =
     [|

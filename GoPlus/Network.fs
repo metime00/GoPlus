@@ -37,7 +37,7 @@ let listen (client : TcpClient) (event : Event<_>) () =
                 let buffer = Array.zeroCreate (x)
                 if stream.Read (buffer, 0, Array.length buffer) <> Array.length buffer then
                     failwith "couldn't read enough bytes to read the whole message"
-                printfn "just received the other player's move"
+                printfn "just received the other player's move, %i bytes" x
                 decode buffer
         event.Trigger (new SignalArgs (moves))
 
