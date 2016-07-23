@@ -47,21 +47,33 @@ let decodeGameInfo (bytes : byte []) =
     (gameSize, { NeutralGen = neutralGen }, powerOp, seed)
 
 /// encodes a list of moves as an array of bytes for sending to the other player
-let encode (moves : (int * int) list) =
-    [|
-        for (x, y) in moves do
-            yield! BitConverter.GetBytes x
-            yield! BitConverter.GetBytes y
-    |]
+let encode message =
+    match message with
+    | Pass -> [| 0uy |]
+    | Revert -> [| 1uy |]
+    | Undo -> [| 2uy |]
+    | Moves moves ->
+        [|
+            yield 3uy
+            for (x, y) in moves do
+                yield! BitConverter.GetBytes x
+                yield! BitConverter.GetBytes y
+        |]
 
-/// Takes a message and returns a list of moves that is the other player's turn
-let decode signal =
-    let rec decode curMoves pos =
-        if pos < Array.length signal then
-            let x = BitConverter.ToInt32 (signal, pos)
-            let y = BitConverter.ToInt32 (signal, pos + 4)
-            decode ((x, y) :: curMoves) (pos + 8)
-        else
-            List.rev curMoves
-    decode [] 0
+/// Takes a message and returns GameMessage that is the other player's turn
+let decode (signal : byte []) =
+    match signal.[0] with
+    | 0uy -> Pass
+    | 1uy -> Revert
+    | 2uy -> Undo
+    | 3uy ->
+        let rec decode curMoves pos =
+            if pos < Array.length signal then
+                let x = BitConverter.ToInt32 (signal, pos)
+                let y = BitConverter.ToInt32 (signal, pos + 4)
+                decode ((x, y) :: curMoves) (pos + 8)
+            else
+                List.rev curMoves
+        Moves (decode [] 1)
+    | _ -> failwith "invalid GameMessage type"
 

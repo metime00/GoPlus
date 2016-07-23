@@ -1,6 +1,8 @@
 ﻿module Window
 // TODO
 
+// -1. fix bug where if one player marks a piece as dead, then another marks another one, it crashes
+
 // 0. make the end game in scoring over network act like passing in the play stage, where both players have to confirm it
 // 0.5 Make a new button for scoring stage only that when pressed sets the game back to the last move and returns to the play stage
 
@@ -226,7 +228,7 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
 
     /// This is where the Window handles a move by the other player
     member this.OnSignalReceived (args : SignalArgs) =
-        let moves = args.MoveCoords
+        let moves = args.Message
         let networkOptions = Option.get maybeNetwork
         if List.length moves = 0 then
             match game.Stage with
@@ -236,7 +238,7 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                 game.MakeMoves curMoves |> ignore
                 let (blackScore, whiteScore) = game.CalulateScore ()
                 MessageBox.Show(String.Format("black score: {0}, white score: {1}", blackScore, whiteScore)) |> ignore
-                this.Close ()
+                Application.Exit ()
         elif game.GetMovesNeeded () = List.length moves 
             && game.Stage = Play 
             && not (canPlay ()) then
@@ -260,7 +262,7 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                         this.Invalidate ()
                     | _ -> failwith "the other player is broken or cheating"
             else
-                curMoves <- curMoves @ moves
+                curMoves <- moves
                 match game.CalculateState curMoves with
                 | Accept (_, intermediateState) ->
                     intermediateBoard <- intermediateState.board

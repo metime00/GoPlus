@@ -68,7 +68,7 @@ type EncodingDecoding() =
 
     [<TestMethod>]
     member this.EncodingMove () = 
-        let moves = [ (0, 5); (7, 2) ]
+        let moves = Moves [ (0, 5); (7, 2) ]
         Assert.AreEqual(moves, moves |> encode |> decode)
 
     [<TestMethod>]
