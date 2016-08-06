@@ -36,13 +36,12 @@ let listen (client : TcpClient) (event : Event<_>) () =
                 failwith "couldn't read enough bytes to read the whole message"
             printfn "just received the other player's move, %i bytes" x
             decode buffer
-        let moves = match message with | Moves moves -> moves | _ -> failwith "shouldn't send game message with anything other than moves yet"
-        event.Trigger (new SignalArgs (moves))
+        event.Trigger (new SignalArgs (message))
 
 let sendMoves (client : TcpClient) moves =
     printfn "I'm sending my moves"
     let stream = client.GetStream ()
-    let message = encode (Moves moves)
+    let message = encode moves
     let messageLengthBytes = BitConverter.GetBytes (Array.length message)
     stream.Write (messageLengthBytes, 0, Array.length messageLengthBytes)
     stream.Write (message, 0, Array.length message)

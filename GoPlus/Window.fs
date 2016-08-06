@@ -21,6 +21,7 @@ open Gameplay
 open Game
 open Util
 open GameOptions
+open Encoding
 open Network
 open System
 open System.Threading
@@ -106,7 +107,7 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
             intermediateBoard <- game.Board
             if game.Stage = Scoring && Option.isSome maybeNetwork then
                 let networkOptions = Option.get maybeNetwork
-                sendMoves networkOptions.Client [lastMove]
+                sendMoves networkOptions.Client GameMessage.Undo
             this.Invalidate ()
         | _ ->
             let lastMove = curMoves.[List.length curMoves - 1]
@@ -116,7 +117,7 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                 intermediateBoard <- intermediateState.board
                 if game.Stage = Scoring && Option.isSome maybeNetwork then
                     let networkOptions = Option.get maybeNetwork
-                    sendMoves networkOptions.Client [lastMove]
+                    sendMoves networkOptions.Client GameMessage.Undo
                 this.Invalidate ()
             | _ -> failwith "shouldn't be able to fail by removing a move"
 
@@ -127,13 +128,13 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                 makePass ()
                 if Option.isSome maybeNetwork then
                     let networkOptions = Option.get maybeNetwork
-                    sendMoves networkOptions.Client []
+                    sendMoves networkOptions.Client GameMessage.Pass
                 this.Invalidate ()
         | Scoring ->
             game.MakeMoves curMoves |> ignore
             if Option.isSome maybeNetwork then
                 let networkOptions = Option.get maybeNetwork
-                sendMoves networkOptions.Client []
+                sendMoves networkOptions.Client GameMessage.Pass
             let (blackScore, whiteScore) = game.CalulateScore ()
             MessageBox.Show(String.Format("black score: {0}, white score: {1}", blackScore, whiteScore)) |> ignore
             this.Close ()
@@ -204,7 +205,7 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                     //send the moves to the other player
                     if Option.isSome maybeNetwork then
                         let networkOptions = Option.get maybeNetwork
-                        sendMoves networkOptions.Client moves
+                        sendMoves networkOptions.Client (GameMessage.Moves moves)
                 | Reject message ->
                     errorMessage <- message
             else
@@ -216,7 +217,7 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                     if game.Stage = Scoring && Option.isSome maybeNetwork then
                     //send the intermediate move if it's scoring mode
                         let networkOptions = Option.get maybeNetwork
-                        sendMoves networkOptions.Client moves
+                        sendMoves networkOptions.Client (GameMessage.Moves moves)
                 | Reject message ->
                     errorMessage <- message
             this.Invalidate ()
@@ -226,9 +227,22 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
 
     /// This is where the Window handles a move by the other player
     member this.OnSignalReceived (args : SignalArgs) =
-        let moves = args.Message
+        let message = args.Message
         let networkOptions = Option.get maybeNetwork
-        if List.length moves = 0 then
+        match message with
+        | Undo ->
+            curMoves <- allBut curMoves
+            match curMoves with
+            | [] ->
+                intermediateBoard <- game.Board
+                this.Invalidate ()
+            | _ ->
+                match game.CalculateState curMoves with
+                | Accept (_, intermediateState) ->
+                    intermediateBoard <- intermediateState.board
+                    this.Invalidate ()
+                | _ -> failwith "the other player is broken or cheating"
+        | Pass ->
             match game.Stage with
             | Play -> makePass ()  
             | Scoring ->
@@ -237,29 +251,18 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                 let (blackScore, whiteScore) = game.CalulateScore ()
                 MessageBox.Show(String.Format("black score: {0}, white score: {1}", blackScore, whiteScore)) |> ignore
                 this.Invoke(new MethodInvoker (this.Close)) |> ignore
-        elif game.GetMovesNeeded () = List.length moves 
-            && game.Stage = Play 
-            && not (canPlay ()) then
-            match game.MakeMoves moves with
-            | Accept () ->
-                intermediateBoard <- game.Board
-            | Reject message ->
-                failwith "the other player is broken or cheating"
-        elif game.Stage = Scoring then
-            //don't wait for the moves needed, just update the current moves stack across the network
-            if List.length curMoves > 0 && [curMoves.[List.length curMoves - 1]] = moves then
-                curMoves <- allBut curMoves
-                match curMoves with
-                | [] ->
+        | Revert -> ()
+        | Moves moves ->
+            if game.GetMovesNeeded () = List.length moves 
+                && game.Stage = Play 
+                && not (canPlay ()) then
+                match game.MakeMoves moves with
+                | Accept () ->
                     intermediateBoard <- game.Board
-                    this.Invalidate ()
-                | _ ->
-                    match game.CalculateState curMoves with
-                    | Accept (_, intermediateState) ->
-                        intermediateBoard <- intermediateState.board
-                        this.Invalidate ()
-                    | _ -> failwith "the other player is broken or cheating"
-            else
+                | Reject message ->
+                    failwith "the other player is broken or cheating"
+            elif game.Stage = Scoring then
+                //don't wait for the moves needed, just update the current moves stack across the network
                 curMoves <- moves
                 match game.CalculateState curMoves with
                 | Accept (_, intermediateState) ->
