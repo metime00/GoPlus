@@ -109,8 +109,9 @@ type Game (size, genop, powerop, seed) =
             state <- prevStates.Item (prevStates.Count - 1)
             prevStates.RemoveAt (prevStates.Count - 1)
             movesMade.RemoveAt (movesMade.Count - 1)
+            Accept ()
         else
-            ()
+            Reject "can't revert to play from play"
 
     member this.NextToMove =
         state.nextToMove

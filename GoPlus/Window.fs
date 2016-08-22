@@ -90,6 +90,7 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
     let turnDisplay = new Label ()
     let powerupDisplay = new Label ()
     let endGameButton = new Button ()
+    let revertButton = new Button ()
     let undoButton = new Button ()
 
     let makePass () =
@@ -138,6 +139,18 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
             let (blackScore, whiteScore) = game.CalulateScore ()
             MessageBox.Show(String.Format("black score: {0}, white score: {1}", blackScore, whiteScore)) |> ignore
             this.Close ()
+    
+    let revertMode args =
+        let result = game.RevertToPlay ()
+        match result with
+        | Reject _ -> ()
+        | Accept () ->
+            intermediateBoard <- game.Board
+            curMoves <- []
+            if Option.isSome maybeNetwork then
+                let networkOptions = Option.get maybeNetwork
+                sendMoves networkOptions.Client GameMessage.Revert
+            this.Invalidate ()
 
     do
         this.Text <- "GoPlus"
@@ -165,7 +178,11 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
         endGameButton.Dock <- DockStyle.Bottom
         endGameButton.AutoSize <- true
         endGameButton.Click.Add endGame
-        this.Controls.AddRange [| scoreDisplay; turnDisplay; powerupDisplay; endGameButton; undoButton |]
+        revertButton.Text <- "Revert"
+        revertButton.Dock <- DockStyle.Bottom
+        revertButton.AutoSize <- true
+        revertButton.Click.Add revertMode
+        this.Controls.AddRange [| scoreDisplay; turnDisplay; powerupDisplay; endGameButton; undoButton; revertButton |]
         signalReceived.Publish.Add (this.OnSignalReceived)
         
 
@@ -251,7 +268,14 @@ type Window (gameSize, gen, powerop, width, height, maybeNetwork, seed) as this 
                 let (blackScore, whiteScore) = game.CalulateScore ()
                 MessageBox.Show(String.Format("black score: {0}, white score: {1}", blackScore, whiteScore)) |> ignore
                 this.Invoke(new MethodInvoker (this.Close)) |> ignore
-        | Revert -> ()
+        | Revert ->
+            match game.RevertToPlay () with
+            | Accept () ->
+                intermediateBoard <- game.Board
+                curMoves <- []
+                this.Invalidate ()
+            | Reject message ->
+                failwith "the other player is broken or cheating"
         | Moves moves ->
             if game.GetMovesNeeded () = List.length moves 
                 && game.Stage = Play 
